@@ -20,24 +20,28 @@ const bot_utils_1 = require("./utils/bot-utils");
 const connect_db_1 = __importDefault(require("./utils/connect-db"));
 const add_raffle_actions_1 = require("./scenes/add-raffle-actions");
 const importWalletScene_1 = require("./scenes/importWalletScene");
-const chooseWalletNameScene_1 = require("./scenes/chooseWalletNameScene");
 const generateWalletSeedScene_1 = require("./scenes/generateWalletSeedScene");
+const importWalletScene_2 = require("./scenes/importWalletScene");
+const chooseWalletNameScene_1 = require("./scenes/chooseWalletNameScene");
+const generateWalletSeedScene_2 = require("./scenes/generateWalletSeedScene");
 const playAmountScene_1 = require("./scenes/playAmountScene");
+const bot_utils_2 = require("./utils/bot-utils");
+const bot_utils_3 = require("./utils/bot-utils");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
     process.exit(1);
 }
-const bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+const bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 // // Express app for handling webhook
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use(bot.webhookCallback("/secret-path"));
-bot.telegram.setWebhook(process.env.SERVER_URL);
+bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
 const stage = new telegraf_1.Scenes.Stage([
-    importWalletScene_1.importWalletStep,
+    importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
-    generateWalletSeedScene_1.generateWalletSeedStep,
+    generateWalletSeedScene_2.generateWalletSeedStep,
     playAmountScene_1.playAmountStep,
 ]);
 bot.use((0, telegraf_1.session)());
@@ -60,14 +64,53 @@ bot.action("ADD_BOT", (ctx) => {
         telegraf_1.Markup.button.callback("➕ Add a Raffle", "ADD_RAFFLE"),
     ]));
 });
+// -----------------------  wallet setup -----------------------------
+// back buttons
+bot.action("back-to-main-menu", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    ctx.deleteMessage();
+    delete ctx.session.selectedDeleteWalletName;
+    delete ctx.session.selectedPlayWalletName;
+    delete ctx.session.selectedRefundWalletName;
+    yield (0, bot_utils_1.menuCommand)(ctx, ctx.session.wallets);
+}));
 bot.command("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("Wallets", ctx.session.wallets);
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
 bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     ctx.deleteMessage();
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
+// create wallet buttons
+bot.action("import-existing-wallet", (ctx) => {
+    ctx.scene.enter(importWalletScene_1.importWalletScene);
+});
+bot.action("generate-wallet-seed", (ctx) => {
+    ctx.scene.enter(generateWalletSeedScene_1.generateWalletSeedScene);
+});
+// delete buttons
+bot.action("btn-delete-wallet", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    ctx.deleteMessage();
+    yield (0, bot_utils_2.btnDeleteWalletAction)(ctx, ctx.session.wallets);
+}));
+bot.action(/^delete-wallet-/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    ctx.deleteMessage();
+    const walletName = ctx.update.callback_query.data.split("-")[2];
+    ctx.session.selectedDeleteWalletName = walletName;
+    const wallet = (0, bot_utils_3.getWalletByName)(ctx, walletName);
+    yield (0, bot_utils_3.dynamicDeleteWalletAction)(ctx, wallet);
+}));
+bot.action("confirm-delete-wallet", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    ctx.deleteMessage();
+    ctx.session.wallets = ctx.session.wallets.filter((_wallet) => _wallet.name !== ctx.session.selectedDeleteWalletName);
+    delete ctx.session.selectedDeleteWalletName;
+    if (ctx.session.wallets.length) {
+        yield (0, bot_utils_2.btnDeleteWalletAction)(ctx, ctx.session.wallets);
+    }
+    else {
+        yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
+    }
+}));
+// -----------------------  wallet setup -----------------------------
 bot.on("new_chat_members", (ctx) => {
     if (ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)) {
         ctx.reply(`Lucky Dog Raffle Bot has been added to the group! Please click [here](https://t.me/${ctx.botInfo.username}) to continue the setup in the private chat.`, { parse_mode: "Markdown" });
@@ -109,9 +152,9 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
 });
 // Connect to the database
 (0, connect_db_1.default)();
-bot.launch(() => {
-    console.log("Bot is running....");
-});
+// bot.launch(() => {
+//   console.log("Bot is running....");
+// });
 // Start the Express server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

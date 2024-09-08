@@ -23,7 +23,7 @@ import { chooseWalletNameStep } from "./scenes/chooseWalletNameScene";
 import { generateWalletSeedStep } from "./scenes/generateWalletSeedScene";
 import { playAmountStep } from "./scenes/playAmountScene";
 import { btnDeleteWalletAction } from "./utils/bot-utils";
-import { getWalletByName,dynamicDeleteWalletAction } from "./utils/bot-utils";
+import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -33,12 +33,16 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
-// // // Express app for handling webhook
-// const app = express();
-// app.use(express.json());
-// app.use(bot.webhookCallback("/secret-path"));
-// bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
+// // Express app for handling webhook
+const app = express();
+app.use(express.json());
+app.use(bot.webhookCallback("/secret-path"));
+// bot.telegram.setWebhook(`https://8cc9-103-215-237-210.ngrok-free.app/secret-path`);
+bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
 
+app.get("/",(req,res)=>{
+  res.send("Server is running")
+})
 const stage = new Scenes.Stage([
   importWalletStep,
   chooseWalletNameStep,
@@ -103,7 +107,6 @@ bot.action("import-existing-wallet", (ctx) => {
 bot.action("generate-wallet-seed", (ctx) => {
   ctx.scene.enter(generateWalletSeedScene);
 });
-
 
 // delete buttons
 
@@ -194,12 +197,12 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
 // Connect to the database
 connectDB();
 
-bot.launch(() => {
-  console.log("Bot is running....");
-});
-
-// // Start the Express server
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-//   console.log(`Server running on port ${PORT}`);
+// bot.launch(() => {
+//   console.log("Bot is running....");
 // });
+
+// Start the Express server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
