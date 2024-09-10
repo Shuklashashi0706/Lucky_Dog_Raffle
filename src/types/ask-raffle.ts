@@ -28,6 +28,7 @@ interface UserState {
   raffleTitle?: string;
   rafflePrice?: number;
   splitPool?: "YES" | "NO";
+  createdGroup?: string;
   splitPercentage?: number;
   ownerWalletAddress?: string;
   startTimeOption?: "NOW" | "SELECT";
@@ -47,6 +48,8 @@ interface UserState {
     | "ASK_RAFFLE_END_TIME"
     | "ASK_RAFFLE_VALUE"
     | "ASK_RAFFLE_PURPOSE"
+    | "ASK_GROUP_ID"
+    | "AWAITING_GROUP_SELECTION"
     | "CONFIRM_DETAILS";
 }
 

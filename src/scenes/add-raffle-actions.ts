@@ -4,6 +4,10 @@ import { formatDate } from "../utils/fortmat-date";
 import { z } from "zod";
 import { UserState, userStateSchema } from "../types/ask-raffle";
 import { transact } from "../utils/mm-sdk";
+import Group from "../models/group";
+import { CallbackQuery } from "telegraf/typings/core/types/typegram"; // Ensure the correct import path
+import { prevMessageState } from "../utils/state";
+import { deletePreviousMessage } from "../utils/message-utils";
 
 const userState: { [chatId: string]: UserState } = {};
 
@@ -30,13 +34,89 @@ const validateField = (field: keyof UserState, value: any): string | null => {
   return null;
 };
 
-export const handleAddRaffle = (ctx: Context) => {
+export const handleAddRaffle = async (ctx: Context) => {
   const chatId = ctx.chat?.id.toString();
-  if (chatId) {
-    userState[chatId] = { stage: "ASK_RAFFLE_TITLE" };
-    ctx.reply(formatMessage("Enter the Raffle Title:"));
+  const userId = ctx.from?.id.toString();
+
+  if (chatId && userId) {
+    try {
+      // Fetch groups associated with the user ID from the database
+      const groups = await Group.find({ username: ctx.from?.username }); // Assuming the username is used for association
+
+      if (groups.length === 0) {
+        ctx.reply(
+          formatMessage(
+            "No available groups found. Please add bot to group first."
+          )
+        );
+        return;
+      }
+
+      // Map groups to buttons
+      const groupButtons = groups.map((group) =>
+        Markup.button.callback(
+          group.groupUsername,
+          `SELECT_GROUP_${group.groupId}`
+        )
+      );
+
+      // Store initial state
+      userState[chatId] = { stage: "AWAITING_GROUP_SELECTION" };
+
+      prevMessageState.prevMessage = await ctx.reply(
+        formatMessage("Select the group to associate with the raffle:"),
+        Markup.inlineKeyboard(groupButtons, { columns: 1 })
+      );
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+      ctx.reply(
+        formatMessage("Failed to retrieve groups. Please try again later.")
+      );
+    }
   } else {
-    ctx.reply(formatMessage("Unable to retrieve chat ID. Please try again."));
+    ctx.reply(
+      formatMessage("Unable to retrieve chat ID or User ID. Please try again.")
+    );
+  }
+};
+
+// Custom type guard to check if callbackQuery is a DataCallbackQuery
+function isDataCallbackQuery(
+  query: CallbackQuery
+): query is CallbackQuery & { data: string } {
+  return "data" in query;
+}
+
+export const handleGroupSelection = (ctx: Context) => {
+  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
+  const chatId = ctx.chat?.id.toString();
+
+  // Use the custom type guard to ensure callbackQuery is of the correct type
+  if (chatId && ctx.callbackQuery && isDataCallbackQuery(ctx.callbackQuery)) {
+    const callbackData = ctx.callbackQuery.data;
+
+    if (callbackData.startsWith("SELECT_GROUP_")) {
+      const groupId = callbackData.replace("SELECT_GROUP_", ""); // Extract the groupId from the callback data
+      const state = userState[chatId];
+
+      if (state && state.stage === "AWAITING_GROUP_SELECTION") {
+        state.createdGroup = groupId; // Set the groupId in the state
+        state.stage = "ASK_RAFFLE_TITLE"; // Move to the next stage
+        ctx.reply(formatMessage("Enter the Raffle Title:"));
+      } else {
+        ctx.reply(
+          formatMessage("Unexpected error. Please start the process again.")
+        );
+      }
+    } else {
+      ctx.reply(
+        formatMessage("Failed to process group selection. Please try again.")
+      );
+    }
+  } else {
+    ctx.reply(
+      formatMessage("Failed to process group selection. Please try again.")
+    );
   }
 };
 
@@ -56,15 +136,15 @@ export const handleSplitPool = (ctx: Context) => {
   }
 };
 
-export const handleNoSplitPool = (ctx: Context) => {
+export const handleNoSplitPool = async (ctx: Context) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       state.splitPool = "NO";
       state.stage = "ASK_RAFFLE_START_TIME";
-      ctx.reply(
-        formatMessage("Set raffle start time:\t\t\t\t\t\t\t\t\t\t\t\t"),
+      prevMessageState.prevMessage = await ctx.reply(
+        formatMessage("Set raffle start time:"),
         Markup.inlineKeyboard([
           [Markup.button.callback("🙌 Now", "START_NOW")],
           [Markup.button.callback("🕰️ Select time", "SELECT_TIME")],
@@ -74,7 +154,7 @@ export const handleNoSplitPool = (ctx: Context) => {
   }
 };
 
-export const handleStartRaffleNow = (ctx: Context) => {
+export const handleStartRaffleNow = async (ctx: Context) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
@@ -85,7 +165,7 @@ export const handleStartRaffleNow = (ctx: Context) => {
         formatMessage("Your raffle will start as soon as it is created.")
       );
       state.stage = "ASK_RAFFLE_LIMIT";
-      ctx.reply(
+      prevMessageState.prevMessage = await ctx.reply(
         formatMessage("Set raffle limit:"),
         Markup.inlineKeyboard([
           [Markup.button.callback("⏱️ Time based", "TIME_BASED")],
@@ -165,7 +245,7 @@ export const handleConfirmDetails = async (ctx: Context) => {
         try {
           const raffle = new Raffle({
             createdBy: ctx.from?.username?.toString(),
-            createdGroup: "Placeholder",
+            createdGroup: state.createdGroup,
             raffleTitle: state.raffleTitle,
             rafflePrice: state.rafflePrice,
             splitPool: state.splitPool,
@@ -203,12 +283,57 @@ export const handleCancel = (ctx: Context) => {
   }
 };
 
-export const handleTextInputs = (ctx: any) => {
+//group addition logic
+// Add a new handler to process the Group ID
+export const handleGroupIdInput = async (ctx: Context) => {
+  const chatId = ctx.chat?.id.toString();
+
+  if (chatId && ctx.message) {
+    const state = userState[chatId];
+
+    if (state && state.stage === "ASK_GROUP_ID") {
+      const groupId = ctx.message.chat.id.toString(); // Extract group ID as a string
+
+      try {
+        // Check if the group exists in the database
+        const group = await Group.findOne({ groupId });
+
+        if (!group) {
+          ctx.reply(
+            formatMessage(
+              `Group ID "${groupId}" not found. Please enter a valid Group ID.`
+            )
+          );
+          return;
+        }
+
+        // Save the group ID to the state
+        state.createdGroup = groupId;
+        state.stage = "ASK_RAFFLE_TITLE";
+        ctx.reply(formatMessage("Enter the Raffle Title:"));
+      } catch (error) {
+        console.error("Error finding group:", error);
+        ctx.reply(
+          formatMessage(
+            "An error occurred while looking up the group. Please try again."
+          )
+        );
+      }
+    }
+  } else {
+    ctx.reply(formatMessage("Unable to retrieve chat ID. Please try again."));
+  }
+};
+
+export const handleTextInputs = async (ctx: any) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       switch (state?.stage) {
+        case "ASK_GROUP_ID":
+          handleGroupIdInput(ctx);
+          break;
         case "ASK_RAFFLE_TITLE":
           const titleError = validateField("raffleTitle", ctx.message?.text);
           if (titleError) {
@@ -237,7 +362,7 @@ export const handleTextInputs = (ctx: any) => {
           }
           state.rafflePrice = price;
           state.stage = "ASK_SPLIT_POOL";
-          ctx.reply(
+          prevMessageState.prevMessage = await ctx.reply(
             formatMessage("Do you wish to have a split of the Raffle Pool?"),
             Markup.inlineKeyboard([
               [
@@ -284,7 +409,7 @@ export const handleTextInputs = (ctx: any) => {
           }
           state.ownerWalletAddress = ctx.message.text;
           state.stage = "ASK_RAFFLE_START_TIME";
-          ctx.reply(
+          prevMessageState.prevMessage = await ctx.reply(
             formatMessage("Set raffle start time:\t\t\t\t\t\t\t\t\t\t\t\t"),
             Markup.inlineKeyboard([
               [Markup.button.callback("🙌 Now", "START_NOW")],
@@ -305,7 +430,7 @@ export const handleTextInputs = (ctx: any) => {
           }
           state.startTime = ctx.message.text;
           state.stage = "ASK_RAFFLE_LIMIT";
-          ctx.reply(
+          prevMessageState.prevMessage = await ctx.reply(
             formatMessage("Set raffle limit:"),
             Markup.inlineKeyboard([
               [Markup.button.callback("⏱️ Time based", "TIME_BASED")],
@@ -388,7 +513,7 @@ Raffle End Time: ${state.raffleEndTime}`
 }
 Raffle Description/Purpose: ${state.rafflePurpose}`);
 
-          ctx.reply(
+          prevMessageState.prevMessage = await ctx.reply(
             summaryMessage,
             Markup.inlineKeyboard([
               [
@@ -401,7 +526,6 @@ Raffle Description/Purpose: ${state.rafflePurpose}`);
             ])
           );
           break;
-
         default:
           ctx.reply(
             formatMessage("Unexpected input. Please start the process again.")
