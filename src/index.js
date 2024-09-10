@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 import express from "express";
-import { BOT_NAME } from "./config";
 import { Telegraf, session, Scenes, Markup } from "telegraf";
 import { menuCommand, walletsCommand } from "./utils/bot-utils";
 import connectDB from "./utils/connect-db";
@@ -35,8 +34,8 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
   console.error("Setup your token");
   process.exit(1);
 }
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
-const bot = new Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
 
 const stage = new Scenes.Stage([
   importWalletStep,

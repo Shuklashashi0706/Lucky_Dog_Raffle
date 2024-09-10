@@ -40,8 +40,9 @@ export const handleAddRaffle = async (ctx: Context) => {
 
   if (chatId && userId) {
     try {
+      
       // Fetch groups associated with the user ID from the database
-      const groups = await Group.find({ username: ctx.from?.username }); // Assuming the username is used for association
+      const groups = await Group.find({ userId: ctx.from?.id.toString()}); // Assuming the username is used for association
 
       if (groups.length === 0) {
         ctx.reply(

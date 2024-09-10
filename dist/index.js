@@ -14,7 +14,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
-const config_1 = require("./config");
 const telegraf_1 = require("telegraf");
 const bot_utils_1 = require("./utils/bot-utils");
 const connect_db_1 = __importDefault(require("./utils/connect-db"));
@@ -36,18 +35,8 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
     process.exit(1);
 }
-const bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
-// // Express app for handling webhook
-// const app = express();
-// app.use(express.json());
-// app.use(bot.webhookCallback("/secret-path"));
-// bot.telegram.setWebhook(
-//   `https://7784-103-215-237-164.ngrok-free.app/secret-path`
-// );
-// bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
-// app.get("/", (req, res) => {
-//   res.send("Server is running");
-// });
+console.log(process.env.TELEGRAM_BOT_TOKEN);
+const bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
@@ -249,12 +238,22 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
 });
 // Connect to the database
 (0, connect_db_1.default)();
-bot.launch(() => {
-    console.log("Bot is running....");
-});
-// Start the Express server
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-//   console.log(`Server running on port ${PORT}`);
-// });
+if (process.env.NODE_ENV === "development") {
+    bot.launch(() => {
+        console.log("Bot is running in dev mode");
+    });
+}
+else if (process.env.NODE_ENV === "production") {
+    const app = (0, express_1.default)();
+    app.use(express_1.default.json());
+    app.use(bot.webhookCallback("/secret-path"));
+    bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
+    app.get("/", (req, res) => {
+        res.send("Server is running");
+        const PORT = process.env.PORT || 3000;
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    });
+}
 //# sourceMappingURL=index.js.map
