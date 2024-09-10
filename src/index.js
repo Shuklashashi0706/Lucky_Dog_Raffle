@@ -302,12 +302,12 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
 // Connect to the database
 connectDB();
 
-bot.launch(() => {
-  console.log("Bot is running....");
-});
-
-// // Start the Express server
-// const PORT = process.env.PORT || 3000;
-// app.listen(PORT, () => {
-//   console.log(`Server running on port ${PORT}`);
+// bot.launch(() => {
+//   console.log("Bot is running....");
 // });
+
+// Start the Express server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
