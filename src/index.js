@@ -4,6 +4,8 @@ import { BOT_NAME } from "./config";
 import { Telegraf, session, Scenes, Markup } from "telegraf";
 import { menuCommand, walletsCommand } from "./utils/bot-utils";
 import connectDB from "./utils/connect-db";
+import Group from "./models/group";
+import Raffle from "./models/raffle";
 import {
   handleAddRaffle,
   handleCancel,
@@ -15,6 +17,7 @@ import {
   handleTextInputs,
   handleTimeBasedLimit,
   handleValueBasedLimit,
+  handleGroupSelection,
 } from "./scenes/add-raffle-actions";
 import { importWalletScene } from "./scenes/importWalletScene";
 import { generateWalletSeedScene } from "./scenes/generateWalletSeedScene";
@@ -37,12 +40,14 @@ const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const app = express();
 app.use(express.json());
 app.use(bot.webhookCallback("/secret-path"));
-// bot.telegram.setWebhook(`https://8cc9-103-215-237-210.ngrok-free.app/secret-path`);
+// bot.telegram.setWebhook(
+//   `https://7784-103-215-237-164.ngrok-free.app/secret-path`
+// );
 bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
 
-app.get("/",(req,res)=>{
-  res.send("Server is running")
-})
+app.get("/", (req, res) => {
+  res.send("Server is running");
+});
 const stage = new Scenes.Stage([
   importWalletStep,
   chooseWalletNameStep,
@@ -68,17 +73,17 @@ bot.command("menu", async (ctx) => {
   await menuCommand(ctx, ctx.session.wallets);
 });
 
-bot.action("ADD_BOT", (ctx) => {
-  const botUsername = ctx.botInfo.username; // Get bot's username dynamically
-  ctx.reply(
-    "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu",
-    Markup.inlineKeyboard([
-      Markup.button.callback("➕ Add a Raffle", "ADD_RAFFLE"),
-    ])
-  );
-});
+// bot.action("ADD_BOT", (ctx) => {
+//   const botUsername = ctx.botInfo.username; // Get bot's username dynamically
+//   ctx.reply(
+//     "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu",
+//     Markup.inlineKeyboard([
+//       Markup.button.callback("➕ Add a Raffle", "ADD_RAFFLE"),
+//     ])
+//   );
+// });
 
-// -----------------------  wallet setup -----------------------------
+// -----------------------  wallet setup start -----------------------------
 
 // back buttons
 
@@ -137,18 +142,118 @@ bot.action("confirm-delete-wallet", async (ctx) => {
     await walletsCommand(ctx, ctx.session.wallets);
   }
 });
-// -----------------------  wallet setup -----------------------------
+// -----------------------  wallet setup end -----------------------------
 
-bot.on("new_chat_members", (ctx) => {
+// adding bot to group
+bot.on("new_chat_members", async (ctx) => {
   if (
     ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)
   ) {
-    ctx.reply(
-      `Lucky Dog Raffle Bot has been added to the group! Please click [here](https://t.me/${ctx.botInfo.username}) to continue the setup in the private chat.`,
-      { parse_mode: "Markdown" }
-    );
+    // Extracting group and bot details from the context
+    const groupId = ctx.chat.id.toString();
+    const groupUsername = ctx.chat.title;
+    const botId = ctx.botInfo.id.toString();
+    const botUsername = ctx.botInfo.username;
+    const username = ctx.message.from.username || "Unknown"; // Fallback if username is not available
+    const userId = ctx.message.from.id;
+
+    try {
+      // Check if the group already exists
+      const existingGroup = await Group.findOne({ groupId, botId });
+      if (existingGroup) {
+        ctx.reply(
+          `Lucky Dog Raffle Bot is already present in this group! Please click [here](https://t.me/${ctx.botInfo.username}) to continue the setup in the private chat.`,
+          { parse_mode: "Markdown" }
+        );
+        return;
+      }
+
+      // Create a new Group document
+      const newGroup = new Group({
+        groupId,
+        groupUsername,
+        botId,
+        botUsername,
+        username,
+        userId,
+        raffleId: null, // Set to null initially or link to an existing raffle if available
+      });
+
+      // Save the new group details to the database
+      await newGroup.save();
+      console.log(
+        `Bot added group: ${groupId}. Group document added successfully`
+      );
+      ctx.reply(
+        `Lucky Dog Raffle Bot has been added to the group! Please click [here](https://t.me/${ctx.botInfo.username}) to continue the setup in the private chat.`,
+        { parse_mode: "Markdown" }
+      );
+    } catch (error) {
+      console.error("Error saving group details:", error);
+
+      // Handle different types of errors
+      if (error instanceof mongoose.Error.ValidationError) {
+        ctx.reply(
+          "Validation error occurred. Please ensure all required information is correct."
+        );
+      } else if (error.code === 11000) {
+        // Duplicate key error
+        ctx.reply("It seems the bot is already added to this group.");
+      } else {
+        ctx.reply(
+          "An unexpected error occurred while saving the group details. Please try again or contact support."
+        );
+      }
+    }
   }
 });
+
+bot.on("left_chat_member", async (ctx) => {
+  // Check if the member who left is the bot itself
+  if (ctx.message?.left_chat_member?.id === ctx.botInfo.id) {
+    // Extract group and bot details from the context
+    const groupId = ctx.chat.id.toString();
+    const botId = ctx.botInfo.id.toString();
+    const botUsername = ctx.botInfo.username;
+
+    try {
+      // Attempt to find and delete the corresponding group document
+      const groupResult = await Group.findOneAndDelete({
+        groupId,
+        botId,
+        botUsername,
+      });
+
+      if (groupResult) {
+        console.log(
+          `Bot removed from group: ${groupId}. Group document deleted successfully.`
+        );
+
+        // Attempt to delete all raffles associated with the group ID
+        const raffleResult = await Raffle.deleteMany({ createdGroup: groupId });
+
+        if (raffleResult.deletedCount > 0) {
+          console.log(
+            `Deleted ${raffleResult.deletedCount} raffle(s) associated with group: ${groupId}.`
+          );
+        } else {
+          console.log(
+            `No raffles found associated with group: ${groupId}. No raffles were deleted.`
+          );
+        }
+      } else {
+        console.log(`No matching group document found for group: ${groupId}.`);
+      }
+    } catch (error) {
+      console.error(
+        "Error removing group document or associated raffles:",
+        error
+      );
+    }
+  }
+});
+
+bot.action(/^SELECT_GROUP_/, handleGroupSelection);
 
 bot.action("ADD_RAFFLE", (ctx) => {
   handleAddRaffle(ctx);
