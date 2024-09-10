@@ -35,7 +35,6 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
     process.exit(1);
 }
-console.log(process.env.TELEGRAM_BOT_TOKEN);
 const bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
