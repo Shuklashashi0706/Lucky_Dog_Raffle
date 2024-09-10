@@ -5,6 +5,8 @@ import { z } from "zod";
 import { UserState, userStateSchema } from "../types/ask-raffle";
 import { transact } from "../utils/mm-sdk";
 import Group from "../models/group";
+import { CallbackQuery } from "telegraf/typings/core/types/typegram"; // Ensure the correct import path
+
 
 const userState: { [chatId: string]: UserState } = {};
 
@@ -67,20 +69,31 @@ export const handleAddRaffle = async (ctx: Context) => {
 };
 
 
+// Custom type guard to check if callbackQuery is a DataCallbackQuery
+function isDataCallbackQuery(query: CallbackQuery): query is CallbackQuery & { data: string } {
+  return 'data' in query;
+}
+
 export const handleGroupSelection = (ctx: Context) => {
   const chatId = ctx.chat?.id.toString();
-  const callbackData = ctx.callbackQuery?.data;
 
-  if (chatId && callbackData && callbackData.startsWith("SELECT_GROUP_")) {
-    const groupId = callbackData.replace("SELECT_GROUP_", ""); // Extract the groupId from the callback data
-    const state = userState[chatId];
+  // Use the custom type guard to ensure callbackQuery is of the correct type
+  if (chatId && ctx.callbackQuery && isDataCallbackQuery(ctx.callbackQuery)) {
+    const callbackData = ctx.callbackQuery.data;
 
-    if (state && state.stage === "AWAITING_GROUP_SELECTION") {
-      state.createdGroup = groupId; // Set the groupId in the state
-      state.stage = "ASK_RAFFLE_TITLE"; // Move to the next stage
-      ctx.reply(formatMessage("Enter the Raffle Title:"));
+    if (callbackData.startsWith("SELECT_GROUP_")) {
+      const groupId = callbackData.replace("SELECT_GROUP_", ""); // Extract the groupId from the callback data
+      const state = userState[chatId];
+
+      if (state && state.stage === "AWAITING_GROUP_SELECTION") {
+        state.createdGroup = groupId; // Set the groupId in the state
+        state.stage = "ASK_RAFFLE_TITLE"; // Move to the next stage
+        ctx.reply(formatMessage("Enter the Raffle Title:"));
+      } else {
+        ctx.reply(formatMessage("Unexpected error. Please start the process again."));
+      }
     } else {
-      ctx.reply(formatMessage("Unexpected error. Please start the process again."));
+      ctx.reply(formatMessage("Failed to process group selection. Please try again."));
     }
   } else {
     ctx.reply(formatMessage("Failed to process group selection. Please try again."));
@@ -204,11 +217,11 @@ export const handleConfirmDetails = async (ctx: Context) => {
         return;
       }
 
-      // const transaction = await transact(
-      //   ctx,
-      //   "0xd99FF85E7377eF02E6996625Ad155a2E4C63E7be"
-      // );
-      // if (transaction) {
+      const transaction = await transact(
+        ctx,
+        "0xd99FF85E7377eF02E6996625Ad155a2E4C63E7be"
+      );
+      if (transaction) {
         try {
           const raffle = new Raffle({
             createdBy: ctx.from?.username?.toString(),
@@ -235,7 +248,7 @@ export const handleConfirmDetails = async (ctx: Context) => {
             formatMessage("Failed to create raffle. Please try again.")
           );
         }
-      // }
+      }
     }
   }
 };
@@ -255,11 +268,11 @@ export const handleCancel = (ctx: Context) => {
 export const handleGroupIdInput = async (ctx: Context) => {
   const chatId = ctx.chat?.id.toString();
 
-  if (chatId) {
+  if (chatId && ctx.message) {
     const state = userState[chatId];
 
     if (state && state.stage === "ASK_GROUP_ID") {
-      const groupId = ctx.message.text; // Extract group ID as a string
+      const groupId = ctx.message.chat.id.toString(); // Extract group ID as a string
 
       try {
         // Check if the group exists in the database
