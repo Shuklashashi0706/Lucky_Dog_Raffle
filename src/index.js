@@ -41,7 +41,7 @@ const app = express();
 app.use(express.json());
 app.use(bot.webhookCallback("/secret-path"));
 // bot.telegram.setWebhook(
-//   `https://7784-103-215-237-164.ngrok-free.app/secret-path`
+//   `https://0390-103-215-237-164.ngrok-free.app/secret-path`
 // );
 bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
 
