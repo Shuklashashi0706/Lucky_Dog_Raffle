@@ -40,9 +40,8 @@ export const handleAddRaffle = async (ctx: Context) => {
 
   if (chatId && userId) {
     try {
-      
       // Fetch groups associated with the user ID from the database
-      const groups = await Group.find({ userId: ctx.from?.id.toString()}); // Assuming the username is used for association
+      const groups = await Group.find({ userId: ctx.from?.id.toString() }); // Assuming the username is used for association
 
       if (groups.length === 0) {
         ctx.reply(
@@ -258,6 +257,7 @@ export const handleConfirmDetails = async (ctx: Context) => {
             raffleEndTime: state.raffleEndTime || null,
             raffleEndValue: state.raffleEndValue || null,
             rafflePurpose: state.rafflePurpose,
+            raffleStatus: "RUNNING",
           });
 
           await raffle.save();
