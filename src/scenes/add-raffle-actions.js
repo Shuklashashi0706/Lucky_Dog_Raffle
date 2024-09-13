@@ -2,16 +2,16 @@ import { Context, Markup } from "telegraf";
 import Raffle from "../models/raffle";
 import { formatDate } from "../utils/fortmat-date";
 import { z } from "zod";
-import { UserState, userStateSchema } from "../types/ask-raffle";
+import { userStateSchema } from "../types/ask-raffle";
 import { transact } from "../utils/mm-sdk";
 import Group from "../models/group";
-import { CallbackQuery } from "telegraf/typings/core/types/typegram"; // Ensure the correct import path
 import { prevMessageState } from "../utils/state";
 import { deletePreviousMessage } from "../utils/message-utils";
 
-const userState: { [chatId: string]: UserState } = {};
+const userState = {};
 
-const formatMessage = (message: string): string => {
+// Function to format a message with borders
+const formatMessage = (message) => {
   const lines = message.split("\n");
   const maxLength = Math.max(...lines.map((line) => line.length));
   const border = " ".repeat(maxLength + 4);
@@ -19,13 +19,13 @@ const formatMessage = (message: string): string => {
   return `${border}\n${paddedLines.join("\n")}\n${border}`;
 };
 
-const validateUserState = (
-  state: Partial<UserState>
-): z.SafeParseReturnType<UserState, UserState> => {
+// Validate user state against schema
+const validateUserState = (state) => {
   return userStateSchema.safeParse(state);
 };
 
-const validateField = (field: keyof UserState, value: any): string | null => {
+// Validate a specific field in the user state
+const validateField = (field, value) => {
   const schema = userStateSchema.shape[field];
   const result = schema.safeParse(value);
   if (!result.success) {
@@ -34,110 +34,96 @@ const validateField = (field: keyof UserState, value: any): string | null => {
   return null;
 };
 
-export const handleAddRaffle = async (ctx: Context) => {
+// Handle the addition of a raffle
+export const handleAddRaffle = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
   const userId = ctx.from?.id.toString();
 
   if (chatId && userId) {
     try {
-      
-      // Fetch groups associated with the user ID from the database
-      const groups = await Group.find({ userId: ctx.from?.id.toString()}); // Assuming the username is used for association
+      const groups = await Group.find({ userId });
+
+      const addBotDeepLink = Markup.button.url(
+        'Add Bot to Group',
+        `https://t.me/${ctx.botInfo.username}?startgroup=true`
+      );
 
       if (groups.length === 0) {
-        ctx.reply(
-          formatMessage(
-            "No available groups found. Please add bot to group first."
-          )
+        await ctx.reply(
+          formatMessage("No available groups found. Please add bot to group first."),
+          Markup.inlineKeyboard([addBotDeepLink], { columns: 1 })
         );
         return;
       }
 
-      // Map groups to buttons
       const groupButtons = groups.map((group) =>
-        Markup.button.callback(
-          group.groupUsername,
-          `SELECT_GROUP_${group.groupId}`
-        )
+        Markup.button.callback(group.groupUsername, `SELECT_GROUP_${group.groupId}`)
       );
 
-      // Store initial state
+      groupButtons.push(addBotDeepLink);
+
       userState[chatId] = { stage: "AWAITING_GROUP_SELECTION" };
 
       prevMessageState.prevMessage = await ctx.reply(
-        formatMessage("Select the group to associate with the raffle:"),
+        formatMessage("Select the group to associate with the raffle or add the bot to a new group:"),
         Markup.inlineKeyboard(groupButtons, { columns: 1 })
       );
     } catch (error) {
       console.error("Error fetching groups:", error);
-      ctx.reply(
-        formatMessage("Failed to retrieve groups. Please try again later.")
-      );
+      ctx.reply(formatMessage("Failed to retrieve groups. Please try again later."));
     }
   } else {
-    ctx.reply(
-      formatMessage("Unable to retrieve chat ID or User ID. Please try again.")
-    );
+    ctx.reply(formatMessage("Unable to retrieve chat ID or User ID. Please try again."));
   }
 };
 
-// Custom type guard to check if callbackQuery is a DataCallbackQuery
-function isDataCallbackQuery(
-  query: CallbackQuery
-): query is CallbackQuery & { data: string } {
+// Function to check if callbackQuery is a DataCallbackQuery
+const isDataCallbackQuery = (query) => {
   return "data" in query;
-}
+};
 
-export const handleGroupSelection = (ctx: Context) => {
+// Handle group selection
+export const handleGroupSelection = (ctx) => {
   if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
   const chatId = ctx.chat?.id.toString();
 
-  // Use the custom type guard to ensure callbackQuery is of the correct type
   if (chatId && ctx.callbackQuery && isDataCallbackQuery(ctx.callbackQuery)) {
     const callbackData = ctx.callbackQuery.data;
 
     if (callbackData.startsWith("SELECT_GROUP_")) {
-      const groupId = callbackData.replace("SELECT_GROUP_", ""); // Extract the groupId from the callback data
+      const groupId = callbackData.replace("SELECT_GROUP_", "");
       const state = userState[chatId];
 
       if (state && state.stage === "AWAITING_GROUP_SELECTION") {
-        state.createdGroup = groupId; // Set the groupId in the state
-        state.stage = "ASK_RAFFLE_TITLE"; // Move to the next stage
+        state.createdGroup = groupId;
+        state.stage = "ASK_RAFFLE_TITLE";
         ctx.reply(formatMessage("Enter the Raffle Title:"));
       } else {
-        ctx.reply(
-          formatMessage("Unexpected error. Please start the process again.")
-        );
+        ctx.reply(formatMessage("Unexpected error. Please start the process again."));
       }
     } else {
-      ctx.reply(
-        formatMessage("Failed to process group selection. Please try again.")
-      );
+      ctx.reply(formatMessage("Failed to process group selection. Please try again."));
     }
   } else {
-    ctx.reply(
-      formatMessage("Failed to process group selection. Please try again.")
-    );
+    ctx.reply(formatMessage("Failed to process group selection. Please try again."));
   }
 };
 
-export const handleSplitPool = (ctx: Context) => {
+// Handle split pool selection
+export const handleSplitPool = (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       state.splitPool = "YES";
       state.stage = "ASK_SPLIT_PERCENT";
-      ctx.reply(
-        formatMessage(
-          "Please enter the split percentage for the owner (0-100):"
-        )
-      );
+      ctx.reply(formatMessage("Please enter the split percentage for the owner (0-100):"));
     }
   }
 };
 
-export const handleNoSplitPool = async (ctx: Context) => {
+// Handle no split pool selection
+export const handleNoSplitPool = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
@@ -155,16 +141,15 @@ export const handleNoSplitPool = async (ctx: Context) => {
   }
 };
 
-export const handleStartRaffleNow = async (ctx: Context) => {
+// Handle starting raffle now
+export const handleStartRaffleNow = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       state.startTime = formatDate(new Date());
       state.startTimeOption = "NOW";
-      ctx.reply(
-        formatMessage("Your raffle will start as soon as it is created.")
-      );
+      ctx.reply(formatMessage("Your raffle will start as soon as it is created."));
       state.stage = "ASK_RAFFLE_LIMIT";
       prevMessageState.prevMessage = await ctx.reply(
         formatMessage("Set raffle limit:"),
@@ -177,39 +162,34 @@ export const handleStartRaffleNow = async (ctx: Context) => {
   }
 };
 
-export const handleSelectTime = (ctx: Context) => {
+// Handle selecting a specific time for the raffle
+export const handleSelectTime = (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       state.startTimeOption = "SELECT";
       state.stage = "ASK_RAFFLE_START_TIME";
-      ctx.reply(
-        formatMessage(
-          "Enter the start date & time in this format DD-MM-YYYY HH:MM\nExample: 04-09-2024 15:06"
-        )
-      );
+      ctx.reply(formatMessage("Enter the start date & time in this format DD-MM-YYYY HH:MM\nExample: 04-09-2024 15:06"));
     }
   }
 };
 
-export const handleTimeBasedLimit = (ctx: Context) => {
+// Handle time-based raffle limit
+export const handleTimeBasedLimit = (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       state.raffleLimitOption = "TIME_BASED";
       state.stage = "ASK_RAFFLE_END_TIME";
-      ctx.reply(
-        formatMessage(
-          "Enter the end date & time in this format DD-MM-YYYY HH:MM\nExample: 04-09-2024 15:06"
-        )
-      );
+      ctx.reply(formatMessage("Enter the end date & time in this format DD-MM-YYYY HH:MM\nExample: 04-09-2024 15:06"));
     }
   }
 };
 
-export const handleValueBasedLimit = (ctx: Context) => {
+// Handle value-based raffle limit
+export const handleValueBasedLimit = (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
@@ -221,7 +201,8 @@ export const handleValueBasedLimit = (ctx: Context) => {
   }
 };
 
-export const handleConfirmDetails = async (ctx: Context) => {
+// Handle confirmation of raffle details
+export const handleConfirmDetails = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
@@ -229,19 +210,12 @@ export const handleConfirmDetails = async (ctx: Context) => {
       const validationResult = validateUserState(state);
       if (!validationResult.success) {
         ctx.reply(
-          formatMessage(
-            `Validation failed: ${validationResult.error.errors
-              .map((e) => e.message)
-              .join(", ")}`
-          )
+          formatMessage(`Validation failed: ${validationResult.error.errors.map((e) => e.message).join(", ")}`)
         );
         return;
       }
 
-      const transaction = await transact(
-        ctx,
-        "0xd99FF85E7377eF02E6996625Ad155a2E4C63E7be"
-      );
+      const transaction = await transact(ctx, "0xd99FF85E7377eF02E6996625Ad155a2E4C63E7be");
       if (transaction) {
         try {
           const raffle = new Raffle({
@@ -265,60 +239,50 @@ export const handleConfirmDetails = async (ctx: Context) => {
           delete userState[chatId];
         } catch (error) {
           console.error("Error saving raffle to MongoDB:", error);
-          ctx.reply(
-            formatMessage("Failed to create raffle. Please try again.")
-          );
+          ctx.reply(formatMessage("Failed to create raffle. Please try again."));
         }
       }
     }
   }
 };
 
-export const handleCancel = (ctx: Context) => {
+// Handle cancelling the raffle setup process
+export const handleCancel = (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     if (userState[chatId]) {
       ctx.reply(formatMessage("Operation canceled!!"));
       delete userState[chatId];
-    } else ctx.reply(formatMessage("Raffle already added"));
+    } else {
+      ctx.reply(formatMessage("Raffle already added"));
+    }
   }
 };
 
-//group addition logic
-// Add a new handler to process the Group ID
-export const handleGroupIdInput = async (ctx: Context) => {
+// Handle the input of the group ID
+export const handleGroupIdInput = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
 
   if (chatId && ctx.message) {
     const state = userState[chatId];
 
     if (state && state.stage === "ASK_GROUP_ID") {
-      const groupId = ctx.message.chat.id.toString(); // Extract group ID as a string
+      const groupId = ctx.message.chat.id.toString();
 
       try {
-        // Check if the group exists in the database
         const group = await Group.findOne({ groupId });
 
         if (!group) {
-          ctx.reply(
-            formatMessage(
-              `Group ID "${groupId}" not found. Please enter a valid Group ID.`
-            )
-          );
+          ctx.reply(formatMessage(`Group ID "${groupId}" not found. Please enter a valid Group ID.`));
           return;
         }
 
-        // Save the group ID to the state
         state.createdGroup = groupId;
         state.stage = "ASK_RAFFLE_TITLE";
         ctx.reply(formatMessage("Enter the Raffle Title:"));
       } catch (error) {
         console.error("Error finding group:", error);
-        ctx.reply(
-          formatMessage(
-            "An error occurred while looking up the group. Please try again."
-          )
-        );
+        ctx.reply(formatMessage("An error occurred while looking up the group. Please try again."));
       }
     }
   } else {
@@ -326,7 +290,8 @@ export const handleGroupIdInput = async (ctx: Context) => {
   }
 };
 
-export const handleTextInputs = async (ctx: any) => {
+// Handle text inputs from the user
+export const handleTextInputs = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
@@ -338,11 +303,7 @@ export const handleTextInputs = async (ctx: any) => {
         case "ASK_RAFFLE_TITLE":
           const titleError = validateField("raffleTitle", ctx.message?.text);
           if (titleError) {
-            ctx.reply(
-              formatMessage(
-                `Error: ${titleError}. Please enter a valid raffle title.`
-              )
-            );
+            ctx.reply(formatMessage(`Error: ${titleError}. Please enter a valid raffle title.`));
             return;
           }
           state.raffleTitle = ctx.message?.text;
@@ -354,11 +315,7 @@ export const handleTextInputs = async (ctx: any) => {
           const price = Number(ctx.message.text);
           const priceError = validateField("rafflePrice", price);
           if (priceError) {
-            ctx.reply(
-              formatMessage(
-                `Error: ${priceError}. Please enter a valid non-negative number for the price.`
-              )
-            );
+            ctx.reply(formatMessage(`Error: ${priceError}. Please enter a valid non-negative number for the price.`));
             return;
           }
           state.rafflePrice = price;
@@ -376,42 +333,26 @@ export const handleTextInputs = async (ctx: any) => {
 
         case "ASK_SPLIT_PERCENT":
           const splitPercent = Number(ctx.message.text);
-          const splitPercentError = validateField(
-            "splitPercentage",
-            splitPercent
-          );
+          const splitPercentError = validateField("splitPercentage", splitPercent);
           if (splitPercentError) {
-            ctx.reply(
-              formatMessage(
-                `Error: ${splitPercentError}. Please enter a valid percentage between 0 and 100.`
-              )
-            );
+            ctx.reply(formatMessage(`Error: ${splitPercentError}. Please enter a valid percentage between 0 and 100.`));
             return;
           }
           state.splitPercentage = splitPercent;
           state.stage = "ASK_WALLET_ADDRESS";
-          ctx.reply(
-            formatMessage("Enter the wallet address to receive the share:")
-          );
+          ctx.reply(formatMessage("Enter the wallet address to receive the share:"));
           break;
 
         case "ASK_WALLET_ADDRESS":
-          const walletError = validateField(
-            "ownerWalletAddress",
-            ctx.message.text
-          );
+          const walletError = validateField("ownerWalletAddress", ctx.message.text);
           if (walletError) {
-            ctx.reply(
-              formatMessage(
-                `Error: ${walletError}. Please enter a valid Ethereum address.`
-              )
-            );
+            ctx.reply(formatMessage(`Error: ${walletError}. Please enter a valid Ethereum address.`));
             return;
           }
           state.ownerWalletAddress = ctx.message.text;
           state.stage = "ASK_RAFFLE_START_TIME";
           prevMessageState.prevMessage = await ctx.reply(
-            formatMessage("Set raffle start time:\t\t\t\t\t\t\t\t\t\t\t\t"),
+            formatMessage("Set raffle start time:"),
             Markup.inlineKeyboard([
               [Markup.button.callback("🙌 Now", "START_NOW")],
               [Markup.button.callback("🕰️ Select time", "SELECT_TIME")],
@@ -423,9 +364,7 @@ export const handleTextInputs = async (ctx: any) => {
           const startTimeError = validateField("startTime", ctx.message.text);
           if (startTimeError) {
             ctx.reply(
-              formatMessage(
-                `Error: ${startTimeError}. Please enter a valid date and time in the format DD-MM-YYYY HH:MM.`
-              )
+              formatMessage(`Error: ${startTimeError}. Please enter a valid date and time in the format DD-MM-YYYY HH:MM.`)
             );
             return;
           }
@@ -444,11 +383,7 @@ export const handleTextInputs = async (ctx: any) => {
           const endValue = Number(ctx.message.text);
           const endValueError = validateField("raffleEndValue", endValue);
           if (endValueError) {
-            ctx.reply(
-              formatMessage(
-                `Error: ${endValueError}. Please enter a valid non-negative number for the raffle limit.`
-              )
-            );
+            ctx.reply(formatMessage(`Error: ${endValueError}. Please enter a valid non-negative number for the raffle limit.`));
             return;
           }
           state.raffleEndValue = endValue;
@@ -460,9 +395,7 @@ export const handleTextInputs = async (ctx: any) => {
           const endTimeError = validateField("raffleEndTime", ctx.message.text);
           if (endTimeError) {
             ctx.reply(
-              formatMessage(
-                `Error: ${endTimeError}. Please enter a valid date and time in the format DD-MM-YYYY HH:MM.`
-              )
+              formatMessage(`Error: ${endTimeError}. Please enter a valid date and time in the format DD-MM-YYYY HH:MM.`)
             );
             return;
           }
@@ -474,11 +407,7 @@ export const handleTextInputs = async (ctx: any) => {
         case "ASK_RAFFLE_PURPOSE":
           const purposeError = validateField("rafflePurpose", ctx.message.text);
           if (purposeError) {
-            ctx.reply(
-              formatMessage(
-                `Error: ${purposeError}. Please enter a valid raffle description.`
-              )
-            );
+            ctx.reply(formatMessage(`Error: ${purposeError}. Please enter a valid raffle description.`));
             return;
           }
           state.rafflePurpose = ctx.message.text;
@@ -486,16 +415,12 @@ export const handleTextInputs = async (ctx: any) => {
           if (!validationResult.success) {
             ctx.reply(
               formatMessage(
-                `Validation failed: ${validationResult.error.errors
-                  .map((e) => e.message)
-                  .join(", ")}`
+                `Validation failed: ${validationResult.error.errors.map((e) => e.message).join(", ")}`
               )
             );
             return;
           }
-          const summaryMessage = formatMessage(`Raffle Title: ${
-            state.raffleTitle
-          }
+          const summaryMessage = formatMessage(`Raffle Title: ${state.raffleTitle}
 Raffle Ticket Price: ${state.rafflePrice}ETH
 ${
   state.splitPool == "YES"
@@ -517,20 +442,14 @@ Raffle Description/Purpose: ${state.rafflePurpose}`);
           prevMessageState.prevMessage = await ctx.reply(
             summaryMessage,
             Markup.inlineKeyboard([
-              [
-                Markup.button.callback(
-                  "☑️ Confirm and Create",
-                  "CONFIRM_DETAILS"
-                ),
-              ],
+              [Markup.button.callback("☑️ Confirm and Create", "CONFIRM_DETAILS")],
               [Markup.button.callback("❌ Cancel", "CANCEL_ADD_RAFL")],
             ])
           );
           break;
+
         default:
-          ctx.reply(
-            formatMessage("Unexpected input. Please start the process again.")
-          );
+          ctx.reply(formatMessage("Unexpected input. Please start the process again."));
           break;
       }
     }

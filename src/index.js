@@ -34,8 +34,8 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
   console.error("Setup your token");
   process.exit(1);
 }
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
 const stage = new Scenes.Stage([
   importWalletStep,
@@ -47,14 +47,60 @@ const stage = new Scenes.Stage([
 bot.use(session());
 bot.use(stage.middleware());
 
-// Set up bot commands and actions
-bot.start((ctx) => {
-  prevMessageState.prevMessage = ctx.reply(
-    "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu",
-    Markup.inlineKeyboard([
-      Markup.button.callback("➕ Add a Raffle", "ADD_RAFFLE"),
-    ])
-  );
+// Function to check if a user has blocked the bot
+async function checkBlockedUser(ctx, userId) {
+  try {
+    await ctx.telegram.sendChatAction(userId, "typing");
+    return false; // User has not blocked the bot
+  } catch (error) {
+    if (error.response && error.response.error_code === 403) {
+      console.log(`User ${userId} has blocked the bot.`);
+      return true; // User has blocked the bot
+    } else {
+      console.error("An unexpected error occurred:", error);
+      return true; // Treat other errors conservatively
+    }
+  }
+}
+
+// Handle the start command
+bot.start(async (ctx) => {
+  if (ctx.chat?.type.includes("group")) {
+    return;
+  }
+
+  // Check if the user has blocked the bot
+  const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
+  if (isBlocked) {
+    // Stop further processing if the user has blocked the bot
+    return;
+  }
+
+  try {
+    prevMessageState.prevMessage = await ctx.reply(
+      "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu"
+      // Uncomment and add keyboard options as needed
+      // Markup.inlineKeyboard([
+      //   Markup.button.callback("➕ Add a Raffle", "ADD_RAFFLE"),
+      // ])
+    );
+  } catch (error) {
+    // Handle errors that occur when sending messages
+    console.error("Error while sending message:", error);
+  }
+});
+
+// Additional handlers go here...
+
+// General middleware to handle all types of actions
+bot.use(async (ctx, next) => {
+  // Check if the user has blocked the bot before processing any commands or actions
+  const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
+  if (isBlocked) {
+    return; // Stop further processing for blocked users
+  }
+  // Continue with the next middleware or handler
+  await next();
 });
 
 // -----------------------  wallet setup start -----------------------------
@@ -69,11 +115,15 @@ bot.action("back-to-main-menu", async (ctx) => {
   await menuCommand(ctx, ctx.session.wallets);
 });
 
+bot.command("menu", async (ctx) => {
+  await menuCommand(ctx, ctx.session.wallets);
+});
+
 bot.command("wallets", async (ctx) => {
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
-bot.command("wallets", async (ctx) => {
+bot.action("wallets", async (ctx) => {
   ctx.deleteMessage();
   await walletsCommand(ctx, ctx.session.wallets);
 });
@@ -118,7 +168,7 @@ bot.action("confirm-delete-wallet", async (ctx) => {
 });
 // -----------------------  wallet setup end -----------------------------
 
-// adding bot to group
+// -----------------------adding bot to group-------------------
 bot.on("new_chat_members", async (ctx) => {
   if (
     ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)
@@ -291,18 +341,23 @@ if (process.env.NODE_ENV === "development") {
     console.log("Bot is running in dev mode");
   });
 } else if (process.env.NODE_ENV === "production") {
-
   const app = express();
   app.use(express.json());
   app.use(bot.webhookCallback("/secret-path"));
-  bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
+  // bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
+  bot.telegram.setWebhook(
+    `https://8bad-103-215-237-202.ngrok-free.app/secret-path`
+  );
 
   app.get("/", (req, res) => {
     res.send("Server is running");
-    
   });
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
   });
 }
+
+// Enable graceful stop
+process.once("SIGINT", () => bot.stop("SIGINT"));
+process.once("SIGTERM", () => bot.stop("SIGTERM"));

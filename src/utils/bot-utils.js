@@ -256,6 +256,7 @@ export async function refundCommand(ctx, wallets) {
 
 // Show Wallets commands
 export async function walletsCommand(ctx, wallets) {
+
   let htmlMessage = '';
   const processingReply = await ctx.reply('processing...');
 
