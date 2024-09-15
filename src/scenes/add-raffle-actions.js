@@ -232,6 +232,7 @@ export const handleConfirmDetails = async (ctx) => {
             raffleEndTime: state.raffleEndTime || null,
             raffleEndValue: state.raffleEndValue || null,
             rafflePurpose: state.rafflePurpose,
+            raffleStatus: "RUNNING",
           });
 
           await raffle.save();

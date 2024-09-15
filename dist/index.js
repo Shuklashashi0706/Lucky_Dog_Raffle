@@ -30,12 +30,13 @@ const bot_utils_2 = require("./utils/bot-utils");
 const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
 const message_utils_1 = require("./utils/message-utils");
+const handle_lucky_command_1 = require("./scenes/handle-lucky-command");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
     process.exit(1);
 }
-const bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
 const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
@@ -109,12 +110,18 @@ bot.action("back-to-main-menu", (ctx) => __awaiter(void 0, void 0, void 0, funct
     delete ctx.session.selectedRefundWalletName;
     yield (0, bot_utils_1.menuCommand)(ctx, ctx.session.wallets);
 }));
+<<<<<<< HEAD
 bot.command("menu", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, bot_utils_1.menuCommand)(ctx, ctx.session.wallets);
-}));
+=======
 bot.command("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    ctx.deleteMessage();
+    console.log("wallet");
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
+>>>>>>> prithvi
+}));
+bot.command("lucky", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log("lulcky");
+    (0, handle_lucky_command_1.handleLuckyCommand)(ctx, bot);
 }));
 // create wallet buttons
 bot.action("import-existing-wallet", (ctx) => {
@@ -285,6 +292,9 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
         (0, message_utils_1.deletePreviousMessage)(ctx);
     (0, add_raffle_actions_1.handleCancel)(ctx);
 });
+bot.action(/buy_ticket_(\d+)_(\w+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    (0, handle_lucky_command_1.handleBuyTicket)(ctx);
+}));
 // Connect to the database
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {

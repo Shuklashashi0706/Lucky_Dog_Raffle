@@ -28,6 +28,10 @@ import { btnDeleteWalletAction } from "./utils/bot-utils";
 import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
 import { deletePreviousMessage } from "./utils/message-utils";
+import {
+  handleBuyTicket,
+  handleLuckyCommand,
+} from "./scenes/handle-lucky-command";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -120,6 +124,7 @@ bot.command("menu", async (ctx) => {
 });
 
 bot.command("wallets", async (ctx) => {
+  console.log("wallet")
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
@@ -127,6 +132,11 @@ bot.action("wallets", async (ctx) => {
   ctx.deleteMessage();
   await walletsCommand(ctx, ctx.session.wallets);
 });
+bot.command("lucky", async (ctx) => {
+  console.log("lulcky")
+   handleLuckyCommand(ctx , bot);
+ });
+ 
 
 // create wallet buttons
 bot.action("import-existing-wallet", (ctx) => {
@@ -332,6 +342,11 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
   if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
   handleCancel(ctx);
 });
+
+bot.action(/buy_ticket_(\d+)_(\w+)/, async (ctx) => {
+  handleBuyTicket(ctx);
+});
+
 
 // Connect to the database
 connectDB();

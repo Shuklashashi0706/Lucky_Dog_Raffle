@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const raffleSchema = new mongoose.Schema({
   createdBy: { type: String, required: true },
-  // createdGroup: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', required: true }, // Reference to Group model
+  raffleStatus: { type: String, enum: ["RUNNING", "COMPLETED"], required: true },
   createdGroup: { type: String },
   raffleTitle: { type: String, required: true },
   rafflePrice: { type: Number, required: true },
