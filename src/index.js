@@ -364,10 +364,10 @@ if (process.env.NODE_ENV === "development") {
   const app = express();
   app.use(express.json());
   app.use(bot.webhookCallback("/secret-path"));
-  // bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
-  bot.telegram.setWebhook(
-    `https://8bad-103-215-237-202.ngrok-free.app/secret-path`
-  );
+  bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
+  // bot.telegram.setWebhook(
+  //   `https://8bad-103-215-237-202.ngrok-free.app/secret-path`
+  // );
 
   app.get("/", (req, res) => {
     res.send("Server is running");
