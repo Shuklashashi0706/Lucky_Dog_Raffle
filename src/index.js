@@ -17,7 +17,16 @@ import {
   handleTimeBasedLimit,
   handleValueBasedLimit,
   handleGroupSelection,
+  handleCreateRaffleWithReferral,
+  handleCreateRaffleWithoutReferral
 } from "./scenes/add-raffle-actions";
+import {
+  handleReferralCode,
+  handleCreateNewReferal,
+  handleInputWalletPrompt,
+  handleSelectWallet,
+  handleWalletSelection,
+} from "./scenes/referal-code";
 import { importWalletScene } from "./scenes/importWalletScene";
 import { generateWalletSeedScene } from "./scenes/generateWalletSeedScene";
 import { importWalletStep } from "./scenes/importWalletScene";
@@ -31,7 +40,7 @@ import {
   handleBuyTicket,
   handleLuckyCommand,
 } from "./scenes/handle-lucky-command";
-import { createRaffle } from "./utils/raffle";
+import { createRaffle } from "./utils/createRaffle";
 import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
 dotenv.config();
 
@@ -40,7 +49,12 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
   process.exit(1);
 }
 
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+let bot;
+if (process.env.NODE_ENV === "development") {
+  bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
+} else {
+  bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+}
 
 const stage = new Scenes.Stage([
   importWalletStep,
@@ -76,7 +90,6 @@ bot.start(async (ctx) => {
   if (ctx.chat?.type.includes("group")) {
     return;
   }
-
   // Check if the user has blocked the bot
   const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
   if (isBlocked) {
@@ -87,10 +100,6 @@ bot.start(async (ctx) => {
   try {
     prevMessageState.prevMessage = await ctx.reply(
       "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu"
-      // Uncomment and add keyboard options as needed
-      // Markup.inlineKeyboard([
-      //   Markup.button.callback("➕ Add a Raffle", "ADD_RAFFLE"),
-      // ])
     );
   } catch (error) {
     // Handle errors that occur when sending messages
@@ -102,7 +111,6 @@ bot.start(async (ctx) => {
 
 // General middleware to handle all types of actions
 bot.use(async (ctx, next) => {
-  // Check if the user has blocked the bot before processing any commands or actions
   const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
   if (isBlocked) {
     return; // Stop further processing for blocked users
@@ -136,7 +144,6 @@ bot.action("wallets", async (ctx) => {
   await walletsCommand(ctx, ctx.session.wallets);
 });
 bot.command("lucky", async (ctx) => {
-  console.log("lulcky");
   handleLuckyCommand(ctx, bot);
 });
 
@@ -183,6 +190,73 @@ bot.action("confirm-delete-wallet", async (ctx) => {
   }
 });
 // -----------------------  wallet setup end -----------------------------
+
+// ----------------- referal code start -----------
+bot.command("referral_code", async (ctx) => {
+  await handleReferralCode(ctx);
+});
+
+bot.action("create_new_referral", async (ctx) => {
+  await handleCreateNewReferal(ctx);
+});
+
+bot.action("input_wallet_address", async (ctx) => {
+  await handleInputWalletPrompt(ctx);
+});
+
+bot.action("select_wallet_address", async (ctx) => {
+  await handleSelectWallet(ctx);
+});
+
+// Bot action to handle wallet selection from the inline keyboard
+bot.action(/^select_wallet_/, async (ctx) => {
+  const walletAddress = ctx.match.input.split("select_wallet_")[1]; // Extract wallet address from callback data
+
+  if (!walletAddress) {
+    ctx.reply("Failed to identify the selected wallet. Please try again.");
+    return;
+  }
+
+  await handleWalletSelection(ctx, walletAddress);
+});
+// ----------------- referal code end -----------
+
+// -------------- create raffle start ------------
+// Handle the action when a wallet address is selected
+bot.action(/^wallet_(.*)/, async (ctx) => {
+  const walletAddress = ctx.match[1]; // Extract wallet address from callback data
+
+  await ctx.reply(
+    `Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`,
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "Yes, I have a referral code",
+              callback_data: `has_referral_${walletAddress}`,
+            },
+            {
+              text: "No, continue without referral",
+              callback_data: `no_referral_${walletAddress}`,
+            },
+          ],
+        ],
+      },
+    }
+  );
+});
+// Handle "Yes, I have a referral code"
+bot.action(/^has_referral_(.*)/, async (ctx) => {
+  const walletAddress = ctx.match[1]; // Extract wallet address from callback data
+  await handleCreateRaffleWithReferral(ctx, walletAddress);
+});
+// Handle "No, continue without referral"
+bot.action(/^no_referral_(.*)/, async (ctx) => {
+  const walletAddress = ctx.match[1]; // Extract wallet address from callback data
+  await handleCreateRaffleWithoutReferral(ctx, walletAddress);
+});
+// -------------- create raffle end ------------
 
 // -----------------------adding bot to group-------------------
 bot.on("new_chat_members", async (ctx) => {
@@ -295,9 +369,16 @@ bot.on("left_chat_member", async (ctx) => {
 
 bot.action(/^SELECT_GROUP_/, handleGroupSelection);
 
-bot.action("ADD_RAFFLE", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleAddRaffle(ctx);
+// Callback action handler for "ADD_RAFFLE"
+bot.action("ADD_RAFFLE", async (ctx) => {
+  try {
+    if (prevMessageState.prevMessage) {
+      deletePreviousMessage(ctx);
+    }
+    await handleAddRaffle(ctx);
+  } catch (error) {
+    ctx.reply("Failed to add raffle. Please try again.");
+  }
 });
 
 bot.on("text", (ctx) => {

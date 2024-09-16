@@ -7,7 +7,9 @@ import { transact } from "../utils/mm-sdk";
 import Group from "../models/group";
 import { prevMessageState } from "../utils/state";
 import { deletePreviousMessage } from "../utils/message-utils";
-
+import { handleWalletAddressInput } from "./referal-code";
+import { createRaffle } from "../utils/createRaffle";
+import Referral from "../models/referal";
 const userState = {};
 
 // Function to format a message with borders
@@ -238,15 +240,13 @@ export const handleValueBasedLimit = (ctx) => {
 // Handle confirmation of raffle details
 export const handleConfirmDetails = async (ctx, wallets) => {
   if (wallets && wallets.length) {
-    console.log("Wallets are present");
+    ctx.session.userState = userState;
 
     // Map wallets to individual button objects and place each button in its own array
     const walletButtons = wallets.map((wallet, index) => [
       {
-        text: `Wallet ${index + 1}: ${wallet.name}, Wallet address: ${
-          wallet.address
-        }`,
-        callback_data: `wallet_${index}`,
+        text: `${wallet.address}`,
+        callback_data: `wallet_${wallet.address}`,
       },
     ]);
 
@@ -264,6 +264,7 @@ export const handleConfirmDetails = async (ctx, wallets) => {
       },
     });
   } else {
+    // No wallets available, offer to create or import a wallet
     const createWallet = {
       text: "Create Wallet",
       callback_data: "generate-wallet-seed",
@@ -280,10 +281,23 @@ export const handleConfirmDetails = async (ctx, wallets) => {
 
     ctx.reply("How would you like to complete the transaction?", {
       reply_markup: {
-        inline_keyboard: [[createWallet], [importWallet], [metamaskApp]], // Each button is placed in its own array to form separate rows
+        inline_keyboard: [[createWallet], [importWallet], [metamaskApp]],
       },
     });
+
+    // Set session flag indicating need to confirm payment method after wallet operation
+    ctx.session.needsPaymentConfirmation = true;
   }
+};
+
+// Function to handle creating a raffle with a referral
+export const handleCreateRaffleWithReferral = async (ctx, walletAddress) => {
+  createRaffle(ctx);
+};
+
+// Function to handle creating a raffle without a referral
+export const handleCreateRaffleWithoutReferral = async (ctx, walletAddress) => {
+  createRaffle(ctx);
 };
 
 export const handleMetamaskApplication = async (ctx) => {
@@ -395,6 +409,12 @@ export const handleGroupIdInput = async (ctx) => {
 // Handle text inputs from the user
 export const handleTextInputs = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
+
+  //handling creation of referal
+  if (ctx.session.awaitingWalletAddress) {
+    await handleWalletAddressInput(ctx);
+  }
+
   if (chatId) {
     const state = userState[chatId];
     if (state) {

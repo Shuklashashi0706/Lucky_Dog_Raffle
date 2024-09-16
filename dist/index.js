@@ -20,6 +20,7 @@ const connect_db_1 = __importDefault(require("./utils/connect-db"));
 const group_1 = __importDefault(require("./models/group"));
 const raffle_1 = __importDefault(require("./models/raffle"));
 const add_raffle_actions_1 = require("./scenes/add-raffle-actions");
+const referal_code_1 = require("./scenes/referal-code");
 const importWalletScene_1 = require("./scenes/importWalletScene");
 const generateWalletSeedScene_1 = require("./scenes/generateWalletSeedScene");
 const importWalletScene_2 = require("./scenes/importWalletScene");
@@ -30,14 +31,20 @@ const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
 const message_utils_1 = require("./utils/message-utils");
 const handle_lucky_command_1 = require("./scenes/handle-lucky-command");
-const raffle_2 = require("./utils/raffle");
+const createRaffle_1 = require("./utils/createRaffle");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
     process.exit(1);
 }
-const bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+let bot;
+if (process.env.NODE_ENV === "development") {
+    bot = new telegraf_1.Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
+}
+else {
+    bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+}
 const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
@@ -65,7 +72,7 @@ function checkBlockedUser(ctx, userId) {
     });
 }
 bot.command("contract", () => __awaiter(void 0, void 0, void 0, function* () {
-    yield (0, raffle_2.createRaffle)();
+    yield (0, createRaffle_1.createRaffle)();
 }));
 // Handle the start command
 bot.start((ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -80,12 +87,7 @@ bot.start((ctx) => __awaiter(void 0, void 0, void 0, function* () {
         return;
     }
     try {
-        state_1.prevMessageState.prevMessage = yield ctx.reply("Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu"
-        // Uncomment and add keyboard options as needed
-        // Markup.inlineKeyboard([
-        //   Markup.button.callback("➕ Add a Raffle", "ADD_RAFFLE"),
-        // ])
-        );
+        state_1.prevMessageState.prevMessage = yield ctx.reply("Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu");
     }
     catch (error) {
         // Handle errors that occur when sending messages
@@ -95,7 +97,6 @@ bot.start((ctx) => __awaiter(void 0, void 0, void 0, function* () {
 // Additional handlers go here...
 // General middleware to handle all types of actions
 bot.use((ctx, next) => __awaiter(void 0, void 0, void 0, function* () {
-    // Check if the user has blocked the bot before processing any commands or actions
     const isBlocked = yield checkBlockedUser(ctx, ctx.from.id);
     if (isBlocked) {
         return; // Stop further processing for blocked users
@@ -123,7 +124,6 @@ bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
 bot.command("lucky", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("lulcky");
     (0, handle_lucky_command_1.handleLuckyCommand)(ctx, bot);
 }));
 bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -160,6 +160,61 @@ bot.action("confirm-delete-wallet", (ctx) => __awaiter(void 0, void 0, void 0, f
     }
 }));
 // -----------------------  wallet setup end -----------------------------
+// ----------------- referal code start -----------
+bot.command("referral_code", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, referal_code_1.handleReferralCode)(ctx);
+}));
+bot.action("create_new_referral", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, referal_code_1.handleCreateNewReferal)(ctx);
+}));
+bot.action("input_wallet_address", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, referal_code_1.handleInputWalletPrompt)(ctx);
+}));
+bot.action("select_wallet_address", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, referal_code_1.handleSelectWallet)(ctx);
+}));
+// Bot action to handle wallet selection from the inline keyboard
+bot.action(/^select_wallet_/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const walletAddress = ctx.match.input.split("select_wallet_")[1]; // Extract wallet address from callback data
+    if (!walletAddress) {
+        ctx.reply("Failed to identify the selected wallet. Please try again.");
+        return;
+    }
+    yield (0, referal_code_1.handleWalletSelection)(ctx, walletAddress);
+}));
+// ----------------- referal code end -----------
+// -------------- create raffle start ------------
+// Handle the action when a wallet address is selected
+bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const walletAddress = ctx.match[1]; // Extract wallet address from callback data
+    yield ctx.reply(`Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    {
+                        text: "Yes, I have a referral code",
+                        callback_data: `has_referral_${walletAddress}`,
+                    },
+                    {
+                        text: "No, continue without referral",
+                        callback_data: `no_referral_${walletAddress}`,
+                    },
+                ],
+            ],
+        },
+    });
+}));
+// Handle "Yes, I have a referral code"
+bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const walletAddress = ctx.match[1]; // Extract wallet address from callback data
+    yield (0, add_raffle_actions_1.handleCreateRaffleWithReferral)(ctx, walletAddress);
+}));
+// Handle "No, continue without referral"
+bot.action(/^no_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const walletAddress = ctx.match[1]; // Extract wallet address from callback data
+    yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress);
+}));
+// -------------- create raffle end ------------
 // -----------------------adding bot to group-------------------
 bot.on("new_chat_members", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)) {
@@ -244,11 +299,18 @@ bot.on("left_chat_member", (ctx) => __awaiter(void 0, void 0, void 0, function* 
     }
 }));
 bot.action(/^SELECT_GROUP_/, add_raffle_actions_1.handleGroupSelection);
-bot.action("ADD_RAFFLE", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleAddRaffle)(ctx);
-});
+// Callback action handler for "ADD_RAFFLE"
+bot.action("ADD_RAFFLE", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        if (state_1.prevMessageState.prevMessage) {
+            (0, message_utils_1.deletePreviousMessage)(ctx);
+        }
+        yield (0, add_raffle_actions_1.handleAddRaffle)(ctx);
+    }
+    catch (error) {
+        ctx.reply("Failed to add raffle. Please try again.");
+    }
+}));
 bot.on("text", (ctx) => {
     if (state_1.prevMessageState.prevMessage)
         (0, message_utils_1.deletePreviousMessage)(ctx);
@@ -312,8 +374,10 @@ else if (process.env.NODE_ENV === "production") {
     const app = (0, express_1.default)();
     app.use(express_1.default.json());
     app.use(bot.webhookCallback("/secret-path"));
-    // bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
-    bot.telegram.setWebhook(`https://8bad-103-215-237-202.ngrok-free.app/secret-path`);
+    bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
+    // bot.telegram.setWebhook(
+    //   `https://8bad-103-215-237-202.ngrok-free.app/secret-path`
+    // );
     app.get("/", (req, res) => {
         res.send("Server is running");
     });
