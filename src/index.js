@@ -23,7 +23,6 @@ import { generateWalletSeedScene } from "./scenes/generateWalletSeedScene";
 import { importWalletStep } from "./scenes/importWalletScene";
 import { chooseWalletNameStep } from "./scenes/chooseWalletNameScene";
 import { generateWalletSeedStep } from "./scenes/generateWalletSeedScene";
-import { playAmountStep } from "./scenes/playAmountScene";
 import { btnDeleteWalletAction } from "./utils/bot-utils";
 import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
@@ -32,6 +31,8 @@ import {
   handleBuyTicket,
   handleLuckyCommand,
 } from "./scenes/handle-lucky-command";
+import { createRaffle } from "./utils/raffle";
+import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -45,7 +46,6 @@ const stage = new Scenes.Stage([
   importWalletStep,
   chooseWalletNameStep,
   generateWalletSeedStep,
-  playAmountStep,
 ]);
 
 bot.use(session());
@@ -66,6 +66,10 @@ async function checkBlockedUser(ctx, userId) {
     }
   }
 }
+
+bot.command("contract", async () => {
+  await createRaffle();
+});
 
 // Handle the start command
 bot.start(async (ctx) => {
@@ -124,7 +128,6 @@ bot.command("menu", async (ctx) => {
 });
 
 bot.command("wallets", async (ctx) => {
-  console.log("wallet")
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
@@ -133,10 +136,13 @@ bot.action("wallets", async (ctx) => {
   await walletsCommand(ctx, ctx.session.wallets);
 });
 bot.command("lucky", async (ctx) => {
-  console.log("lulcky")
-   handleLuckyCommand(ctx , bot);
- });
- 
+  console.log("lulcky");
+  handleLuckyCommand(ctx, bot);
+});
+
+bot.action("metamask", async (ctx) => {
+  await handleMetamaskApplication(ctx);
+});
 
 // create wallet buttons
 bot.action("import-existing-wallet", (ctx) => {
@@ -335,7 +341,7 @@ bot.action("VALUE_BASED", (ctx) => {
 // confirm details
 bot.action("CONFIRM_DETAILS", async (ctx) => {
   if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleConfirmDetails(ctx);
+  handleConfirmDetails(ctx, ctx.session.wallets);
 });
 
 bot.action("CANCEL_ADD_RAFL", (ctx) => {
@@ -346,7 +352,6 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
 bot.action(/buy_ticket_(\d+)_(\w+)/, async (ctx) => {
   handleBuyTicket(ctx);
 });
-
 
 // Connect to the database
 connectDB();

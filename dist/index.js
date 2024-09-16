@@ -25,23 +25,23 @@ const generateWalletSeedScene_1 = require("./scenes/generateWalletSeedScene");
 const importWalletScene_2 = require("./scenes/importWalletScene");
 const chooseWalletNameScene_1 = require("./scenes/chooseWalletNameScene");
 const generateWalletSeedScene_2 = require("./scenes/generateWalletSeedScene");
-const playAmountScene_1 = require("./scenes/playAmountScene");
 const bot_utils_2 = require("./utils/bot-utils");
 const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
 const message_utils_1 = require("./utils/message-utils");
 const handle_lucky_command_1 = require("./scenes/handle-lucky-command");
+const raffle_2 = require("./utils/raffle");
+const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
     process.exit(1);
 }
-const bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+const bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
     generateWalletSeedScene_2.generateWalletSeedStep,
-    playAmountScene_1.playAmountStep,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -50,7 +50,6 @@ function checkBlockedUser(ctx, userId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             yield ctx.telegram.sendChatAction(userId, "typing");
-            console.log(`User ${userId} is active.`);
             return false; // User has not blocked the bot
         }
         catch (error) {
@@ -65,6 +64,9 @@ function checkBlockedUser(ctx, userId) {
         }
     });
 }
+bot.command("contract", () => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, raffle_2.createRaffle)();
+}));
 // Handle the start command
 bot.start((ctx) => __awaiter(void 0, void 0, void 0, function* () {
     var _a;
@@ -110,18 +112,22 @@ bot.action("back-to-main-menu", (ctx) => __awaiter(void 0, void 0, void 0, funct
     delete ctx.session.selectedRefundWalletName;
     yield (0, bot_utils_1.menuCommand)(ctx, ctx.session.wallets);
 }));
-<<<<<<< HEAD
 bot.command("menu", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, bot_utils_1.menuCommand)(ctx, ctx.session.wallets);
-=======
+}));
 bot.command("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("wallet");
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
->>>>>>> prithvi
+}));
+bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    ctx.deleteMessage();
+    yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
 bot.command("lucky", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     console.log("lulcky");
     (0, handle_lucky_command_1.handleLuckyCommand)(ctx, bot);
+}));
+bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, add_raffle_actions_2.handleMetamaskApplication)(ctx);
 }));
 // create wallet buttons
 bot.action("import-existing-wallet", (ctx) => {
@@ -285,7 +291,7 @@ bot.action("VALUE_BASED", (ctx) => {
 bot.action("CONFIRM_DETAILS", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage)
         (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleConfirmDetails)(ctx);
+    (0, add_raffle_actions_1.handleConfirmDetails)(ctx, ctx.session.wallets);
 }));
 bot.action("CANCEL_ADD_RAFL", (ctx) => {
     if (state_1.prevMessageState.prevMessage)

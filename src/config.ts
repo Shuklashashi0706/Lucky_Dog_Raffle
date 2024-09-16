@@ -1,10 +1,10 @@
 // Define types for CHAIN configuration
 type ChainConfig = {
-  rpcUrl: string;
-  explorerUrl: string;
-  name: string;
-  currency: string;
-  cbActionKey: string;
+  rpcUrl?: string;
+  explorerUrl?: string;
+  name?: string;
+  currency?: string;
+  cbActionKey?: string;
 };
 
 type Chains = {
@@ -13,8 +13,13 @@ type Chains = {
 
 // Define CHAIN object with type
 export const CHAIN: Chains = {
+  sepolia: {
+    rpcUrl:
+      "https://eth-sepolia.g.alchemy.com/v2/WRfmzLBj8D-0bD76QLpD7DjZu5rUIAtE",
+  },
   "mumbai-testnet": {
-    rpcUrl: "https://polygon-amoy.g.alchemy.com/v2/NeEbQDi3yU9wRy7OsVEmYF4dpyRaKm1I",
+    rpcUrl:
+      "https://polygon-amoy.g.alchemy.com/v2/NeEbQDi3yU9wRy7OsVEmYF4dpyRaKm1I",
     explorerUrl: "https://mumbai.polygonscan.com",
     name: "Mumbai Testnet",
     currency: "ETH",
@@ -23,119 +28,26 @@ export const CHAIN: Chains = {
 };
 
 // Define the bot name
-export const BOT_NAME: string = "PsychoBot";
+export const BOT_NAME: string = "LuckyDogRaffle";
 
 // Define the ABI for the Coin Flip contract
-export const COIN_FLIP_ABI: any[] = [
+export const RAFFLE_ABI: any[] = [
   {
     inputs: [
-      { internalType: "uint64", name: "subscriptionId", type: "uint64" },
-      { internalType: "uint256", name: "_minBet", type: "uint256" },
-      {
-        internalType: "uint256",
-        name: "_maxRewardPoolPercentage",
-        type: "uint256",
-      },
-      { internalType: "address", name: "_feeWallet", type: "address" },
-      { internalType: "uint256", name: "_feePercentage", type: "uint256" },
+      { internalType: "address", name: "_serviceWallet", type: "address" },
     ],
     stateMutability: "nonpayable",
     type: "constructor",
   },
   {
-    inputs: [
-      { internalType: "address", name: "have", type: "address" },
-      { internalType: "address", name: "want", type: "address" },
-    ],
-    name: "OnlyCoordinatorCanFulfill",
+    inputs: [{ internalType: "address", name: "owner", type: "address" }],
+    name: "OwnableInvalidOwner",
     type: "error",
   },
   {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: false,
-        internalType: "uint32",
-        name: "oldValue",
-        type: "uint32",
-      },
-      {
-        indexed: false,
-        internalType: "uint32",
-        name: "newValue",
-        type: "uint32",
-      },
-    ],
-    name: "CallbackGasLimitUpdated",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "user", type: "address" },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "gameId",
-        type: "uint256",
-      },
-    ],
-    name: "Cancel",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "player",
-        type: "address",
-      },
-      { indexed: false, internalType: "bool", name: "didWin", type: "bool" },
-      { indexed: false, internalType: "bool", name: "isTail", type: "bool" },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "gameId",
-        type: "uint256",
-      },
-    ],
-    name: "FlipCompleted",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      { indexed: true, internalType: "address", name: "user", type: "address" },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "amount",
-        type: "uint256",
-      },
-      { indexed: false, internalType: "bool", name: "isTail", type: "bool" },
-      {
-        indexed: true,
-        internalType: "uint256",
-        name: "gameId",
-        type: "uint256",
-      },
-    ],
-    name: "NewFlip",
-    type: "event",
+    inputs: [{ internalType: "address", name: "account", type: "address" }],
+    name: "OwnableUnauthorizedAccount",
+    type: "error",
   },
   {
     anonymous: false,
@@ -159,124 +71,180 @@ export const COIN_FLIP_ABI: any[] = [
   {
     anonymous: false,
     inputs: [
-      { indexed: false, internalType: "bool", name: "newState", type: "bool" },
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "raffleId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "admin",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "entryCost",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "raffleEndTime",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "maxTickets",
+        type: "uint256",
+      },
     ],
-    name: "PauseChanged",
+    name: "RaffleCreated",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "raffleId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "winner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "prizeAmount",
+        type: "uint256",
+      },
+    ],
+    name: "RaffleEnded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "raffleId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "participant",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "numTickets",
+        type: "uint256",
+      },
+    ],
+    name: "TicketPurchased",
     type: "event",
   },
   {
     inputs: [],
-    name: "addToRewardPool",
-    outputs: [],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "address", name: "", type: "address" }],
-    name: "addressToFlip",
+    name: "REFERRER_FEE_PERCENTAGE",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    name: "allFlipResults",
+    inputs: [],
+    name: "SERVICE_FEE_PERCENTAGE_WITHOUT_REFERRER",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "SERVICE_FEE_PERCENTAGE_WITH_REFERRER",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      { internalType: "uint256", name: "_raffleId", type: "uint256" },
+      { internalType: "uint256", name: "_numTickets", type: "uint256" },
+    ],
+    name: "buyTickets",
+    outputs: [],
+    stateMutability: "payable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "bytes", name: "", type: "bytes" }],
+    name: "checkUpkeep",
     outputs: [
-      { internalType: "address", name: "player", type: "address" },
-      { internalType: "bool", name: "didWin", type: "bool" },
-      { internalType: "bool", name: "isTail", type: "bool" },
-      { internalType: "uint256", name: "amount", type: "uint256" },
-      { internalType: "uint256", name: "gameId", type: "uint256" },
-      { internalType: "uint256", name: "timestamp", type: "uint256" },
+      { internalType: "bool", name: "upkeepNeeded", type: "bool" },
+      { internalType: "bytes", name: "performData", type: "bytes" },
     ],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint32", name: "newLimit", type: "uint32" }],
-    name: "changeCallbackGasLimit",
+    inputs: [
+      { internalType: "uint256", name: "_entryCost", type: "uint256" },
+      { internalType: "uint256", name: "_raffleStartTime", type: "uint256" },
+      { internalType: "uint256", name: "_raffleEndTime", type: "uint256" },
+      { internalType: "uint256", name: "_maxTickets", type: "uint256" },
+      { internalType: "address", name: "_tgOwner", type: "address" },
+      { internalType: "uint256", name: "_tgOwnerPercentage", type: "uint256" },
+      { internalType: "uint256", name: "_maxBuyPerWallet", type: "uint256" },
+      { internalType: "address", name: "_referrer", type: "address" },
+    ],
+    name: "createRaffle",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
-    inputs: [],
-    name: "feeWallet",
-    outputs: [{ internalType: "address", name: "", type: "address" }],
+    inputs: [{ internalType: "uint256", name: "_raffleId", type: "uint256" }],
+    name: "endRaffle",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_raffleId", type: "uint256" }],
+    name: "getRaffleDetails",
+    outputs: [
+      { internalType: "address", name: "admin", type: "address" },
+      { internalType: "address", name: "tgOwner", type: "address" },
+      { internalType: "address", name: "winner", type: "address" },
+      { internalType: "uint256", name: "entryCost", type: "uint256" },
+      { internalType: "uint256", name: "raffleStartTime", type: "uint256" },
+      { internalType: "uint256", name: "raffleEndTime", type: "uint256" },
+      { internalType: "uint256", name: "maxTickets", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "uint256", name: "tgOwnerPercentage", type: "uint256" },
+      { internalType: "uint256", name: "maxBuyPerWallet", type: "uint256" },
+      { internalType: "address", name: "referrer", type: "address" },
+      { internalType: "uint256", name: "ticketsSold", type: "uint256" },
+    ],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [{ internalType: "bool", name: "isTail", type: "bool" }],
-    name: "flip",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "payable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    name: "flipToAddress",
-    outputs: [
+    inputs: [
+      { internalType: "uint256", name: "raffleID", type: "uint256" },
       { internalType: "address", name: "user", type: "address" },
-      { internalType: "uint256", name: "userBet", type: "uint256" },
-      { internalType: "uint256", name: "time", type: "uint256" },
-      { internalType: "bool", name: "isTail", type: "bool" },
     ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "_count", type: "uint256" }],
-    name: "getLastFlipResults",
-    outputs: [
-      {
-        components: [
-          { internalType: "address", name: "player", type: "address" },
-          { internalType: "bool", name: "didWin", type: "bool" },
-          { internalType: "bool", name: "isTail", type: "bool" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-          { internalType: "uint256", name: "gameId", type: "uint256" },
-          { internalType: "uint256", name: "timestamp", type: "uint256" },
-        ],
-        internalType: "struct DracoCoinFlipTg.FlipResult[]",
-        name: "",
-        type: "tuple[]",
-      },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "getRefund",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    name: "idToFlipIndex",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "lostAmount",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "maxBet",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "minBet",
+    name: "getTicketsByUser",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
     stateMutability: "view",
     type: "function",
@@ -289,26 +257,46 @@ export const COIN_FLIP_ABI: any[] = [
     type: "function",
   },
   {
-    inputs: [],
-    name: "pause",
-    outputs: [{ internalType: "bool", name: "", type: "bool" }],
+    inputs: [
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "uint256", name: "", type: "uint256" },
+    ],
+    name: "participants",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [
-      { internalType: "uint256", name: "requestId", type: "uint256" },
-      { internalType: "uint256[]", name: "randomWords", type: "uint256[]" },
-    ],
-    name: "rawFulfillRandomWords",
+    inputs: [{ internalType: "bytes", name: "performData", type: "bytes" }],
+    name: "performUpkeep",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
     inputs: [],
-    name: "refundDelay",
+    name: "raffleCounter",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    name: "raffles",
+    outputs: [
+      { internalType: "address", name: "admin", type: "address" },
+      { internalType: "address", name: "tgOwner", type: "address" },
+      { internalType: "address", name: "winner", type: "address" },
+      { internalType: "address", name: "referrer", type: "address" },
+      { internalType: "uint256", name: "entryCost", type: "uint256" },
+      { internalType: "uint256", name: "raffleStartTime", type: "uint256" },
+      { internalType: "uint256", name: "raffleEndTime", type: "uint256" },
+      { internalType: "uint256", name: "maxTickets", type: "uint256" },
+      { internalType: "bool", name: "isActive", type: "bool" },
+      { internalType: "uint256", name: "tgOwnerPercentage", type: "uint256" },
+      { internalType: "uint256", name: "maxBuyPerWallet", type: "uint256" },
+      { internalType: "uint256", name: "ticketsSold", type: "uint256" },
+    ],
     stateMutability: "view",
     type: "function",
   },
@@ -321,80 +309,36 @@ export const COIN_FLIP_ABI: any[] = [
   },
   {
     inputs: [],
-    name: "resetLostAmount",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "rewardPool",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "rewardPoolPercentage",
-    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    name: "serviceWallet",
+    outputs: [{ internalType: "address", name: "", type: "address" }],
     stateMutability: "view",
     type: "function",
   },
   {
     inputs: [
-      { internalType: "uint256", name: "_feePercentage", type: "uint256" },
+      { internalType: "uint256", name: "_raffleId", type: "uint256" },
+      { internalType: "uint256", name: "_maxBuyPerWallet", type: "uint256" },
     ],
-    name: "setFeePercentage",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "address", name: "_feeWallet", type: "address" }],
-    name: "setFeeWallet",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bytes32", name: "_keyHash", type: "bytes32" }],
-    name: "setKeyHash",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "_minBet", type: "uint256" }],
-    name: "setMinBet",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "bool", name: "state", type: "bool" }],
-    name: "setPause",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [{ internalType: "uint256", name: "_delay", type: "uint256" }],
-    name: "setRefundDelay",
+    name: "setMaxPurchaseLimit",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
   {
     inputs: [
-      {
-        internalType: "uint256",
-        name: "_maxRewardPoolPercentage",
-        type: "uint256",
-      },
+      { internalType: "uint256", name: "", type: "uint256" },
+      { internalType: "address", name: "", type: "address" },
     ],
-    name: "setRewardPoolPercentage",
-    outputs: [],
-    stateMutability: "nonpayable",
+    name: "ticketsBoughtPerWallet",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [],
+    name: "totalServiceFees",
+    outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
+    stateMutability: "view",
     type: "function",
   },
   {
@@ -405,14 +349,12 @@ export const COIN_FLIP_ABI: any[] = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "uint256", name: "_amount", type: "uint256" }],
-    name: "withdraw",
+    inputs: [],
+    name: "withdrawServiceFees",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
   },
-  { stateMutability: "payable", type: "receive" },
 ];
-
 // Define the contract address
-export const COIN_FLIP_CONTRACT: string = "0x0e146E78F76acF743f563745Bf19d19e5D358C47";
+export const RAFFLE_cONTRACT: string = "0x4652c3c335F1644beb68c55632c9DD8268aeb676";

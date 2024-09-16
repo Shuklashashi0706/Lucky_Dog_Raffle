@@ -7,7 +7,6 @@ import {
   chooseWalletNameScene,
   chooseWalletNameStep,
 } from "./chooseWalletNameScene";
-import { playAmountScene, playAmountStep } from "./playAmountScene";
 
 import {
   handleAddRaffle,
@@ -22,7 +21,6 @@ import {
   handleTextInputs,
 } from "./add-raffle-actions";
 
-
 export default {
   importWalletScene,
   importWalletStep,
@@ -30,8 +28,6 @@ export default {
   generateWalletSeedStep,
   chooseWalletNameScene,
   chooseWalletNameStep,
-  playAmountScene,
-  playAmountStep,
   handleAddRaffle,
   handleSplitPool,
   handleNoSplitPool,
