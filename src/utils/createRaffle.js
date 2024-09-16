@@ -6,7 +6,7 @@ export const createRaffle = async (ctx) => {
     CHAIN["sepolia"].rpcUrl
   );
   const wallet = new Wallet(
-    "ab7ed858bafa191780d8ee80ddf049721a01e7db2708d6ae8977c1cfc9271ec9",
+    process.env.PRIVATE_KEY,
     provider
   );
   const userState = ctx.session.userState || {};
