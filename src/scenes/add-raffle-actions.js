@@ -289,15 +289,83 @@ export const handleConfirmDetails = async (ctx, wallets) => {
     ctx.session.needsPaymentConfirmation = true;
   }
 };
+// ----------------------------------------
 
 // Function to handle creating a raffle with a referral
-export const handleCreateRaffleWithReferral = async (ctx, walletAddress) => {
-  createRaffle(ctx);
+export const handleCreateRaffleWithReferral = async (ctx) => {
+  // createRaffle(ctx);
+  const chatId = ctx.chat?.id.toString();
+  if (chatId) {
+    const state = userState[chatId];
+    if (state) {
+      state.stage = "CREATE_RAFFLE";
+      ctx.reply("Enter your referral code:");
+    }
+  }
 };
 
-// Function to handle creating a raffle without a referral
+export const handleCreateRaffleWithReferalInput = async (ctx) => {
+  const referralCode = ctx.message.text;
+  const isValid = await validateReferralCode(referralCode, ctx.from.id);
+  if (isValid) {
+    await createRaffle(ctx);
+  } else {
+    await handleInvalidReferralCode(ctx);
+  }
+};
+
+// Function to validate the referral code
+export const validateReferralCode = async (referralCode, userId) => {
+  try {
+    const referral = await Referral.findOne({ userId, referralCode });
+    return referral ? true : false;
+  } catch (error) {
+    console.error("Error validating referral code:", error);
+    return false;
+  }
+};
+
+// Function to handle raffle creation when referral code is valid
+export const handleValidReferralCode = async (ctx) => {
+  try {
+    // Proceed with raffle creation using the valid referral code
+    await createRaffle(ctx);
+  } catch (error) {
+    console.error("Error creating raffle:", error);
+    ctx.reply(
+      "Failed to create raffle with the referral code. Please try again."
+    );
+  }
+};
+// Function to handle invalid referral code response
+export const handleInvalidReferralCode = async (ctx) => {
+  ctx.reply("Referral code is invalid. Please choose an option:", {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "Enter again", callback_data: "enter_referral_again" }],
+        [
+          {
+            text: "Proceed without referral code",
+            callback_data: "proceed_without_referral",
+          },
+        ],
+      ],
+    },
+  });
+};
+// --------------------------------------
+
+// Function to handle creating a raffle without a referral code
 export const handleCreateRaffleWithoutReferral = async (ctx, walletAddress) => {
-  createRaffle(ctx);
+  try {
+    // Proceed with raffle creation without a referral code
+    await createRaffle(ctx); // Default referrer to zero address
+  } catch (error) {
+    console.error("Error creating raffle:", error);
+    ctx.reply(
+      "Failed to create raffle without the referral code. Please try again."
+    );
+  }
 };
 
 export const handleMetamaskApplication = async (ctx) => {
@@ -419,6 +487,9 @@ export const handleTextInputs = async (ctx) => {
     const state = userState[chatId];
     if (state) {
       switch (state?.stage) {
+        case "CREATE_RAFFLE":
+          handleCreateRaffleWithReferalInput(ctx);
+          break;
         case "ASK_GROUP_ID":
           handleGroupIdInput(ctx);
           break;

@@ -18,7 +18,9 @@ import {
   handleValueBasedLimit,
   handleGroupSelection,
   handleCreateRaffleWithReferral,
-  handleCreateRaffleWithoutReferral
+  handleCreateRaffleWithoutReferral,
+  handleCreateRaffleWithReferral,
+  handleCreateRaffleWithoutReferral,
 } from "./scenes/add-raffle-actions";
 import {
   handleReferralCode,
@@ -219,6 +221,17 @@ bot.action(/^select_wallet_/, async (ctx) => {
 
   await handleWalletSelection(ctx, walletAddress);
 });
+
+// Handle "Enter again" option
+bot.action("enter_referral_again", async (ctx) => {
+  await handleCreateRaffleWithReferral(ctx); // Restart the referral input flow
+});
+
+// Handle "Proceed without referral" option
+bot.action("proceed_without_referral", async (ctx) => {
+  await handleCreateRaffleWithoutReferral(ctx); // Proceed without referral
+});
+
 // ----------------- referal code end -----------
 
 // -------------- create raffle start ------------

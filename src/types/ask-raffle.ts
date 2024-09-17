@@ -50,6 +50,7 @@ interface UserState {
     | "ASK_RAFFLE_PURPOSE"
     | "ASK_GROUP_ID"
     | "AWAITING_GROUP_SELECTION"
+    | "CREATE_RAFFLE"
     | "CONFIRM_DETAILS";
 }
 
