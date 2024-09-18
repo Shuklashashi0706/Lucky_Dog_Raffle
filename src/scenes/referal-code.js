@@ -50,7 +50,7 @@ export const handleReferralCode = async (ctx) => {
         return [
           {
             text: `${referral.referralCode} - ${formattedAddress}`, // Display in "Referral Code - Formatted Wallet Address" format
-            callback_data: "",
+            callback_data: "noop",
           },
         ];
       });
