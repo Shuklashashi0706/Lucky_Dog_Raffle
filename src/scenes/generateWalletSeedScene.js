@@ -3,7 +3,7 @@ import { generateAccount } from "../utils/account-utils";
 import { makeItClickable } from "../utils/bot-utils";
 import { decrypt } from "../utils/encryption-utils";
 import { handleConfirmDetails } from "./add-raffle-actions";
-
+import { handleSelectWallet } from "./referal-code";
 export const generateWalletSeedScene = "generateWalletSeedScene";
 export const generateWalletSeedStep = new Scenes.BaseScene(
   generateWalletSeedScene
@@ -41,6 +41,11 @@ generateWalletSeedStep.on("text", (ctx) => {
       );
 
       // Redirect to confirm payment method if needed
+      if (ctx.session.selectWalletReferal) {
+        ctx.scene.leave();
+        handleSelectWallet(ctx);
+        ctx.session.selectWalletReferal = false;
+      }
       if (ctx.session.needsPaymentConfirmation) {
         ctx.scene.leave();
         handleConfirmDetails(ctx, ctx.session.wallets);

@@ -6,23 +6,30 @@ const walletAddressSchema = z
   .string()
   .regex(/^0x[a-fA-F0-9]{40}$/, "Invalid Ethereum address");
 
-// Function to generate a unique 5-character referral code
+// Function to generate a unique referral code in the format "LDGREF<counter><random>"
 export const generateUniqueReferralCode = async () => {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let referralCode;
+  const prefix = "LDGREF";
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let suffix = 1; // Start from 1 and increment
 
   while (true) {
-    referralCode = Array.from({ length: 5 }, () =>
+    // Generate a random 2-character string from the alphabet
+    const randomChars = Array.from({ length: 2 }, () =>
       characters.charAt(Math.floor(Math.random() * characters.length))
     ).join("");
 
+    // Combine the prefix, counter, and random characters to form the referral code
+    const referralCode = `${prefix}${suffix}${randomChars}`;
+
+    // Check if the generated referral code already exists in the database
     const existingCode = await Referral.findOne({ referralCode });
-    if (!existingCode) break;
+    if (!existingCode) {
+      return referralCode; // Return the referral code if it doesn't exist
+    }
+
+    suffix++; // Increment the suffix to try the next number
   }
-
-  return referralCode;
 };
-
 // Function to handle the display of referral codes and wallet addresses
 export const handleReferralCode = async (ctx) => {
   try {
@@ -33,12 +40,20 @@ export const handleReferralCode = async (ctx) => {
 
     if (existingReferrals.length > 0) {
       // Prepare buttons showing existing referral codes and wallet addresses
-      const referralButtons = existingReferrals.map((referral) => [
-        {
-          text: `${referral.referralCode} - ${referral.walletAddress}`, // Display in "Referral Code - Wallet Address" format
-          callback_data: `wallet_${referral.walletAddress}`,
-        },
-      ]);
+      const referralButtons = existingReferrals.map((referral) => {
+        // Format the wallet address to show the first 4 and last 4 characters
+        const formattedAddress = `${referral.walletAddress.slice(
+          0,
+          5
+        )}.................................${referral.walletAddress.slice(-4)}`;
+
+        return [
+          {
+            text: `${referral.referralCode} - ${formattedAddress}`, // Display in "Referral Code - Formatted Wallet Address" format
+            callback_data: `wallet_${referral.walletAddress}`,
+          },
+        ];
+      });
 
       // Add a button for creating a new referral
       referralButtons.push([
@@ -179,12 +194,18 @@ export const handleSelectWallet = async (ctx) => {
   try {
     const walletButtons =
       wallets && wallets.length > 0
-        ? wallets.map((wallet, index) => [
-            {
-              text: `Wallet ${index + 1}: ${wallet.address}`,
-              callback_data: `select_wallet_${wallet.address}`,
-            },
-          ])
+        ? wallets.map((wallet, index) => {
+            const formattedAddress = `${wallet.address.slice(
+              0,
+              5
+            )}...........${wallet.address.slice(-4)}`;
+            return [
+              {
+                text: `Wallet ${index + 1}: ${formattedAddress}`,
+                callback_data: `select_wallet_${wallet.address}`,
+              },
+            ];
+          })
         : [];
 
     // Add a button for adding a new wallet address at the bottom
@@ -197,7 +218,7 @@ export const handleSelectWallet = async (ctx) => {
 
     // Add the "Add Wallet Address" button either as the last button or the only button if no wallets are present
     walletButtons.push(addWalletButton);
-
+    ctx.session.selectWalletReferal = true;
     // Send the list of wallet addresses as a vertical inline keyboard, including the add wallet button
     await ctx.reply(
       "Select a wallet to create a referral code, or add a new wallet address:",

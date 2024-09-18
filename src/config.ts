@@ -357,4 +357,4 @@ export const RAFFLE_ABI: any[] = [
   },
 ];
 // Define the contract address
-export const RAFFLE_cONTRACT: string = "0x4652c3c335F1644beb68c55632c9DD8268aeb676";
+export const RAFFLE_CONTRACT: string = "0x4652c3c335F1644beb68c55632c9DD8268aeb676";

@@ -1,14 +1,14 @@
 import { Wallet, ethers, Contract } from "ethers";
-import { CHAIN, RAFFLE_ABI, RAFFLE_cONTRACT } from "../config";
+import { CHAIN, RAFFLE_ABI,RAFFLE_CONTRACT } from "../config";
 
-export const createRaffle = async (ctx) => {
+export const createRaffle = async (ctx,privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
   );
-  const wallet = new Wallet(
-    process.env.PRIVATE_KEY,
-    provider
-  );
+  if(!privateKey){
+    ctx.reply("Private key is not defined...just for testing purpose ...remove it")
+  }
+  const wallet = new Wallet(privateKey, provider);
   const userState = ctx.session.userState || {};
 
   // Destructuring userState with default values for missing fields
@@ -28,10 +28,12 @@ export const createRaffle = async (ctx) => {
 
   // Ensure the TG owner is set correctly
   const _tgOwner = createdGroup || wallet.address;
-  
+
   // Validate TG owner is not a zero address
   if (_tgOwner === ethers.constants.AddressZero) {
-    ctx.reply("TG owner cannot be a zero address. Please check the configuration.");
+    ctx.reply(
+      "TG owner cannot be a zero address. Please check the configuration."
+    );
     return;
   }
 
@@ -49,9 +51,10 @@ export const createRaffle = async (ctx) => {
   const _entryCost = rafflePrice;
   const _raffleStartTime = startTime;
 
-  const contract = new Contract(RAFFLE_cONTRACT, RAFFLE_ABI, wallet);
+  const contract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
 
   try {
+    await ctx.reply("Your transaction is being processed, please wait...");
     const tx = await contract.createRaffle(
       _entryCost,
       _raffleStartTime,
@@ -63,16 +66,22 @@ export const createRaffle = async (ctx) => {
       referrer
     );
 
-    console.log("Transaction sent:", tx.hash);
+    // Notify the user of the transaction hash
+    await ctx.reply(`Transaction sent: ${tx.hash}`);
+
+    await ctx.reply(`Your transaction is getting mined , please wait.....`);
     const receipt = await tx.wait();
-    console.log("Transaction mined:", receipt.transactionHash);
-    ctx.reply("Raffle is created successfully✨");
+    // Notify the user that the transaction has been mined
+    await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
+    await ctx.reply("Raffle is created successfully ✨");
   } catch (error) {
     console.error("Error creating raffle:", error);
     if (error.reason) {
       ctx.reply(`Failed to create raffle: ${error.reason}`);
     } else {
-      ctx.reply("Failed to create raffle. Please check input parameters and try again.");
+      ctx.reply(
+        "Failed to create raffle. Please check input parameters and try again."
+      );
     }
   }
 };

@@ -38,12 +38,5 @@ importWalletStep.on("leave", (ctx) => {
       ctx.session.newWallet,
     ];
     ctx.session.newWallet = null;
-
-    // Redirect to confirm payment method if needed
-    if (ctx.session.needsPaymentConfirmation) {
-      console.log("import wallet need pyment");
-      handleConfirmDetails(ctx, ctx.session.wallets);
-      ctx.session.needsPaymentConfirmation=false;
-    }
   }
 });

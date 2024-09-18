@@ -21,6 +21,7 @@ import {
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
   handleCreateRaffleWithoutReferral,
+  handleGroupIdInput
 } from "./scenes/add-raffle-actions";
 import {
   handleReferralCode,
@@ -82,16 +83,12 @@ async function checkBlockedUser(ctx, userId) {
     }
   }
 }
-
-bot.command("contract", async () => {
-  await createRaffle();
-});
-
 // Handle the start command
 bot.start(async (ctx) => {
   if (ctx.chat?.type.includes("group")) {
     return;
   }
+
   // Check if the user has blocked the bot
   const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
   if (isBlocked) {
@@ -100,13 +97,36 @@ bot.start(async (ctx) => {
   }
 
   try {
+    // Create inline keyboard buttons
+    const keyboard = Markup.inlineKeyboard([
+      [
+        Markup.button.url(
+          "Add bot to group",
+          `https://t.me/${ctx.botInfo.username}?startgroup=true`
+        ),
+      ],
+      [
+        Markup.button.callback(
+          "Create/Update a raffle",
+          "CREATE_UPDATE_RAFFLE"
+        ),
+      ],
+    ]);
+
     prevMessageState.prevMessage = await ctx.reply(
-      "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today? \n/menu"
+      "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today?",
+      keyboard
     );
   } catch (error) {
     // Handle errors that occur when sending messages
     console.error("Error while sending message:", error);
   }
+});
+
+// Handle the "Create/Update a raffle" button action
+bot.action("CREATE_UPDATE_RAFFLE", async (ctx) => {
+  // Add logic here to create or update a raffle
+  await handleAddRaffle(ctx); // Assuming handleAddRaffle is the function to start the raffle creation/update process
 });
 
 // Additional handlers go here...
@@ -133,9 +153,9 @@ bot.action("back-to-main-menu", async (ctx) => {
   await menuCommand(ctx, ctx.session.wallets);
 });
 
-bot.command("menu", async (ctx) => {
-  await menuCommand(ctx, ctx.session.wallets);
-});
+// bot.command("menu", async (ctx) => {
+//   await menuCommand(ctx, ctx.session.wallets);
+// });
 
 bot.command("wallets", async (ctx) => {
   await walletsCommand(ctx, ctx.session.wallets);
@@ -145,6 +165,7 @@ bot.action("wallets", async (ctx) => {
   ctx.deleteMessage();
   await walletsCommand(ctx, ctx.session.wallets);
 });
+
 bot.command("lucky", async (ctx) => {
   handleLuckyCommand(ctx, bot);
 });
@@ -229,7 +250,8 @@ bot.action("enter_referral_again", async (ctx) => {
 
 // Handle "Proceed without referral" option
 bot.action("proceed_without_referral", async (ctx) => {
-  await handleCreateRaffleWithoutReferral(ctx); // Proceed without referral
+  const walletAddress = ctx.session.walletAddress;
+  await handleCreateRaffleWithoutReferral(ctx,walletAddress); // Proceed without referral
 });
 
 // ----------------- referal code end -----------
@@ -259,6 +281,9 @@ bot.action(/^wallet_(.*)/, async (ctx) => {
     }
   );
 });
+bot.command("wal",async(ctx)=>{
+  console.log("wallets",ctx.session.wallets);
+})
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, async (ctx) => {
   const walletAddress = ctx.match[1]; // Extract wallet address from callback data
@@ -382,17 +407,41 @@ bot.on("left_chat_member", async (ctx) => {
 
 bot.action(/^SELECT_GROUP_/, handleGroupSelection);
 
-// Callback action handler for "ADD_RAFFLE"
-bot.action("ADD_RAFFLE", async (ctx) => {
+
+bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
+  const groupId = ctx.match[1];
+
   try {
-    if (prevMessageState.prevMessage) {
-      deletePreviousMessage(ctx);
-    }
-    await handleAddRaffle(ctx);
+    await handleGroupIdInput(ctx, groupId);
   } catch (error) {
-    ctx.reply("Failed to add raffle. Please try again.");
+    console.error("Error handling ADD_RAFFLE action:", error);
+    ctx.reply("An error occurred while trying to add a new raffle. Please try again.");
   }
 });
+
+bot.action(/^UPDATE_RAFFLE_(.*)/, async (ctx) => {
+  const groupId = ctx.match[1];
+  // Handle the logic for updating a running raffle
+  await ctx.reply(`Updating a running raffle for group ID: ${groupId}`);
+});
+
+bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
+  const groupId = ctx.match[1];
+  // Handle the logic for viewing raffle details
+  await ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
+});
+
+// // Callback action handler for "ADD_RAFFLE"
+// bot.action("ADD_RAFFLE", async (ctx) => {
+//   try {
+//     if (prevMessageState.prevMessage) {
+//       deletePreviousMessage(ctx);
+//     }
+//     await handleAddRaffle(ctx);
+//   } catch (error) {
+//     ctx.reply("Failed to add raffle. Please try again.");
+//   }
+// });
 
 bot.on("text", (ctx) => {
   if (prevMessageState.prevMessage) deletePreviousMessage(ctx);

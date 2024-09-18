@@ -45,8 +45,8 @@ export async function getSelectedWalletHtml(selectedWallet, prefixWithMessage = 
 }
 
 // Get wallet by name
-export function getWalletByName(ctx, walletName) {
-  return ctx.session.wallets.find((_wallet) => _wallet.name === walletName);
+export function getWalletByAddress(ctx, walletAddress) {
+  return ctx.session.wallets.find((_wallet) => _wallet.address === walletAddress);
 }
 
 // Make it clickable

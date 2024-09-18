@@ -10,6 +10,8 @@ import { deletePreviousMessage } from "../utils/message-utils";
 import { handleWalletAddressInput } from "./referal-code";
 import { createRaffle } from "../utils/createRaffle";
 import Referral from "../models/referal";
+import { getWalletByAddress } from "../utils/bot-utils";
+import { decrypt } from "../utils/encryption-utils";
 const userState = {};
 
 // Function to format a message with borders
@@ -60,17 +62,15 @@ export const handleAddRaffle = async (ctx) => {
         return;
       }
 
-      let groupButtons = [];
-
-      const selectedGroups = groups.map((group) =>
+      const groupButtons = groups.map((group) =>
         Markup.button.callback(
           group.groupUsername,
           `SELECT_GROUP_${group.groupId}`
         )
       );
 
+      // Add the deep link button to add bot to a new group
       groupButtons.push(addBotDeepLink);
-      groupButtons.push(...selectedGroups);
 
       userState[chatId] = { stage: "AWAITING_GROUP_SELECTION" };
 
@@ -93,17 +93,17 @@ export const handleAddRaffle = async (ctx) => {
   }
 };
 
-// Function to check if callbackQuery is a DataCallbackQuery
-const isDataCallbackQuery = (query) => {
-  return "data" in query;
-};
+// // Function to check if callbackQuery is a DataCallbackQuery
+// const isDataCallbackQuery = (query) => {
+//   return "data" in query;
+// };
 
 // Handle group selection
-export const handleGroupSelection = (ctx) => {
+export const handleGroupSelection = async (ctx) => {
   if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
   const chatId = ctx.chat?.id.toString();
 
-  if (chatId && ctx.callbackQuery && isDataCallbackQuery(ctx.callbackQuery)) {
+  if (chatId && ctx.callbackQuery && ctx.callbackQuery.data) {
     const callbackData = ctx.callbackQuery.data;
 
     if (callbackData.startsWith("SELECT_GROUP_")) {
@@ -111,23 +111,56 @@ export const handleGroupSelection = (ctx) => {
       const state = userState[chatId];
 
       if (state && state.stage === "AWAITING_GROUP_SELECTION") {
-        state.createdGroup = groupId;
-        state.stage = "ASK_RAFFLE_TITLE";
-        ctx.reply(formatMessage("Enter the Raffle Title:"));
+        try {
+          const selectedGroup = await Group.findOne({ groupId });
+
+          if (!selectedGroup) {
+            await ctx.reply(
+              "Failed to find the selected group. Please try again."
+            );
+            return;
+          }
+
+          state.createdGroup = groupId;
+          state.stage = "GROUP_ACTION_SELECTION";
+
+          await ctx.reply(
+            `What are you wanting to do for ${selectedGroup.groupUsername} group/channel today:`,
+            Markup.inlineKeyboard([
+              [
+                Markup.button.callback(
+                  "Add a new Raffle",
+                  `ADD_RAFFLE_${groupId}`
+                ),
+              ],
+              [
+                Markup.button.callback(
+                  "Update running raffle",
+                  `UPDATE_RAFFLE_${groupId}`
+                ),
+              ],
+              [
+                Markup.button.callback(
+                  "View raffle details",
+                  `VIEW_RAFFLE_${groupId}`
+                ),
+              ],
+            ])
+          );
+        } catch (error) {
+          console.error("Error fetching selected group:", error);
+          ctx.reply(
+            "An error occurred while fetching the group. Please try again."
+          );
+        }
       } else {
-        ctx.reply(
-          formatMessage("Unexpected error. Please start the process again.")
-        );
+        await ctx.reply("Unexpected error. Please start the process again.");
       }
     } else {
-      ctx.reply(
-        formatMessage("Failed to process group selection. Please try again.")
-      );
+      await ctx.reply("Failed to process group selection. Please try again.");
     }
   } else {
-    ctx.reply(
-      formatMessage("Failed to process group selection. Please try again.")
-    );
+    await ctx.reply("Failed to process group selection. Please try again.");
   }
 };
 
@@ -242,15 +275,18 @@ export const handleConfirmDetails = async (ctx, wallets) => {
   if (wallets && wallets.length) {
     ctx.session.userState = userState;
 
-    // Map wallets to individual button objects and place each button in its own array
-    const walletButtons = wallets.map((wallet, index) => [
-      {
-        text: `${wallet.address}`,
-        callback_data: `wallet_${wallet.address}`,
-      },
-    ]);
+    // Map wallets to individual button objects and place each button in its own array (as a row)
+    const walletButtons = wallets.map((wallet, index) => {
+      const formattedAddress = `${wallet.address.slice(0, 5)}...........${wallet.address.slice(-4)}`;
+      return [
+        {
+          text: formattedAddress,
+          callback_data: `wallet_${wallet.address}`,
+        }
+      ]; // Wrapping each button inside an array to form a row
+    });
 
-    // Add Metamask option as a separate row
+    // Add Metamask option as a separate row (wrapped inside an array)
     walletButtons.push([
       {
         text: "Metamask application",
@@ -258,9 +294,10 @@ export const handleConfirmDetails = async (ctx, wallets) => {
       },
     ]);
 
-    ctx.reply("Please confirm your payment method", {
+    // Send message with inline keyboard
+    await ctx.reply("Please confirm your payment method", {
       reply_markup: {
-        inline_keyboard: walletButtons, // Each button is in its own row
+        inline_keyboard: walletButtons, // This will now be an array of arrays (rows)
       },
     });
   } else {
@@ -279,9 +316,9 @@ export const handleConfirmDetails = async (ctx, wallets) => {
       callback_data: "metamask",
     };
 
-    ctx.reply("How would you like to complete the transaction?", {
+    await ctx.reply("How would you like to complete the transaction?", {
       reply_markup: {
-        inline_keyboard: [[createWallet], [importWallet], [metamaskApp]],
+        inline_keyboard: [[createWallet], [importWallet], [metamaskApp]], // Ensuring all buttons are wrapped in arrays (rows)
       },
     });
 
@@ -289,26 +326,33 @@ export const handleConfirmDetails = async (ctx, wallets) => {
     ctx.session.needsPaymentConfirmation = true;
   }
 };
+
 // ----------------------------------------
 
 // Function to handle creating a raffle with a referral
-export const handleCreateRaffleWithReferral = async (ctx) => {
-  // createRaffle(ctx);
+export const handleCreateRaffleWithReferral = async (ctx, walletAddress) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       state.stage = "CREATE_RAFFLE";
-      ctx.reply("Enter your referral code:");
+      // Store the walletAddress in the user state for later use
+      ctx.session.walletAddress = walletAddress;
+      await ctx.reply("Enter your referral code:");
     }
   }
 };
 
+// Function to handle creating a raffle with referral input
 export const handleCreateRaffleWithReferalInput = async (ctx) => {
   const referralCode = ctx.message.text;
+  await ctx.reply("Validating your referral code, please wait...");
+  const walletAddress = ctx.session.walletAddress;
+  const wallet = getWalletByAddress(ctx, walletAddress);
+  const privateKey = decrypt(wallet.privateKey);
   const isValid = await validateReferralCode(referralCode, ctx.from.id);
   if (isValid) {
-    await createRaffle(ctx);
+    await createRaffle(ctx, privateKey);
   } else {
     await handleInvalidReferralCode(ctx);
   }
@@ -358,8 +402,10 @@ export const handleInvalidReferralCode = async (ctx) => {
 // Function to handle creating a raffle without a referral code
 export const handleCreateRaffleWithoutReferral = async (ctx, walletAddress) => {
   try {
+    const wallet = getWalletByAddress(ctx, walletAddress);
+    const privateKey = decrypt(wallet.privateKey);
     // Proceed with raffle creation without a referral code
-    await createRaffle(ctx); // Default referrer to zero address
+    await createRaffle(ctx, privateKey); // Default referrer to zero address
   } catch (error) {
     console.error("Error creating raffle:", error);
     ctx.reply(
@@ -435,42 +481,52 @@ export const handleCancel = (ctx) => {
   }
 };
 
-// Handle the input of the group ID
-export const handleGroupIdInput = async (ctx) => {
+export const handleGroupIdInput = async (ctx, groupId) => {
   const chatId = ctx.chat?.id.toString();
 
-  if (chatId && ctx.message) {
-    const state = userState[chatId];
+  if (!chatId) {
+    ctx.reply("Unable to retrieve chat ID. Please try again.");
+    return;
+  }
 
-    if (state && state.stage === "ASK_GROUP_ID") {
-      const groupId = ctx.message.chat.id.toString();
+  const state = userState[chatId] || {};
 
-      try {
-        const group = await Group.findOne({ groupId });
+  try {
+    const group = await Group.findOne({ groupId });
 
-        if (!group) {
-          ctx.reply(
-            formatMessage(
-              `Group ID "${groupId}" not found. Please enter a valid Group ID.`
-            )
-          );
-          return;
-        }
-
-        state.createdGroup = groupId;
-        state.stage = "ASK_RAFFLE_TITLE";
-        ctx.reply(formatMessage("Enter the Raffle Title:"));
-      } catch (error) {
-        console.error("Error finding group:", error);
-        ctx.reply(
-          formatMessage(
-            "An error occurred while looking up the group. Please try again."
-          )
-        );
-      }
+    if (!group) {
+      await ctx.reply(
+        formatMessage(
+          `Group ID "${groupId}" not found. Please enter a valid Group ID.`
+        )
+      );
+      return;
     }
-  } else {
-    ctx.reply(formatMessage("Unable to retrieve chat ID. Please try again."));
+
+    state.createdGroup = groupId;
+    state.stage = "ASK_RAFFLE_TITLE";
+    userState[chatId] = state; // Ensure state is updated in userState
+
+    await ctx.reply(formatMessage("Enter the Raffle Title:"));
+  } catch (error) {
+    console.error("Error finding group:", error);
+
+    if (error instanceof mongoose.Error.ValidationError) {
+      ctx.reply(
+        formatMessage(
+          "Validation error occurred while looking up the group. Please ensure all information is correct."
+        )
+      );
+    } else if (error.code === 11000) {
+      // Duplicate key error (if applicable)
+      ctx.reply("Duplicate entry found. Please ensure the group ID is unique.");
+    } else {
+      ctx.reply(
+        formatMessage(
+          "An unexpected error occurred while looking up the group. Please try again or contact support."
+        )
+      );
+    }
   }
 };
 
