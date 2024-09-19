@@ -1,33 +1,39 @@
 import { Wallet, ethers, Contract } from "ethers";
-import { CHAIN, RAFFLE_ABI,RAFFLE_CONTRACT } from "../config";
+import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
+import axios from "axios";
 
-export const createRaffle = async (ctx,privateKey) => {
+export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
   );
-  if(!privateKey){
-    ctx.reply("Private key is not defined...just for testing purpose ...remove it")
+  if (!privateKey) {
+    ctx.reply(
+      "Private key is not defined...just for testing purpose ...remove it"
+    );
   }
   const wallet = new Wallet(privateKey, provider);
   const userState = ctx.session.userState || {};
 
   // Destructuring userState with default values for missing fields
   const {
-    rafflePrice = ethers.utils.parseEther("0.01"), // Default entry cost
+    rafflePrice = ethers.utils.parseEther("0.01"),
     startTime = Math.floor(Date.now() / 1000) + 3600, // Default start time (1 hour from now)
     raffleEndValue = Math.floor(Date.now() / 1000) + 86400, // Default end time (24 hours from now)
-    createdGroup, // Could map to _tgOwner
     splitPool, // For determining _tgOwnerPercentage, default if split is NO
     maxBuyPerWallet = 10, // Default max tickets per wallet
     referrer = ethers.constants.AddressZero, // Default no referrer
   } = userState;
 
-  // Set either max tickets or raffle end time to zero based on your needs
+  const userKey = Object.keys(userState)[0];
+  const userDetails = userState[userKey] || {};
+  const { createdGroup } = userDetails;
+
+
   const _maxTickets = 0; // Default to zero; adjust based on your application needs
   const _raffleEndTime = _maxTickets === 0 ? raffleEndValue : 0; // Set to zero if max tickets is used
 
   // Ensure the TG owner is set correctly
-  const _tgOwner = createdGroup || wallet.address;
+  const _tgOwner = wallet.address;
 
   // Validate TG owner is not a zero address
   if (_tgOwner === ethers.constants.AddressZero) {
@@ -74,6 +80,31 @@ export const createRaffle = async (ctx,privateKey) => {
     // Notify the user that the transaction has been mined
     await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     await ctx.reply("Raffle is created successfully ✨");
+
+    // Send the message to the group using the Telegram API
+    const botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN; // Ensure your bot token is stored in environment variables
+    const message = "Raffle is created successfully ✨";
+
+    if (createdGroup) {
+
+      const telegramApiUrl = `https://api.telegram.org/bot${botIDAndToken}/sendMessage?chat_id=${createdGroup}&text=${encodeURIComponent(
+        message
+      )}`;
+
+      try {
+        const res = await axios.get(telegramApiUrl);
+        if (res.status === 200) {
+          console.log("Message sent to the group successfully");
+        } else {
+          console.error("Failed to send message to the group:");
+        }
+      } catch (apiError) {
+        console.error("Failed to send message to the group:");
+      }
+    } else {
+      console.error("Group ID is undefined or invalid.");
+      await ctx.reply("Group ID is undefined or invalid.");
+    }
   } catch (error) {
     console.error("Error creating raffle:", error);
     if (error.reason) {
