@@ -1,5 +1,5 @@
 const { z } = require("zod");
-const dateTimeRegex = /^\d{2}-\d{2}-\d{4} \d{2}:\d{2}$/;
+const durationRegex = /^(\d+d\s?)?(\d+h\s?)?$/;
 const userStateSchema = z.object({
   raffleTitle: z.string().min(1, "Raffle title is required"),
   rafflePrice: z
@@ -13,12 +13,12 @@ const userStateSchema = z.object({
   startTimeOption: z.enum(["NOW", "SELECT"]),
   startTime: z
     .string()
-    .regex(dateTimeRegex, "Invalid date format, must be DD-MM-YYYY HH:MM")
+    .regex(durationRegex, "Invalid date format, must be like 2d 5h")
     .optional(),
   raffleLimitOption: z.enum(["TIME_BASED", "VALUE_BASED"]),
   raffleEndTime: z
     .string()
-    .regex(dateTimeRegex, "Invalid date format, must be DD-MM-YYYY HH:MM")
+    .regex(durationRegex, "Invalid date format, must be like 2d 8h")
     .optional(),
   raffleEndValue: z.number().nonnegative().optional(),
   rafflePurpose: z.string().min(1, "Raffle description is required"),

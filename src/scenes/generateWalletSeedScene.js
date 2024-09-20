@@ -4,6 +4,7 @@ import { makeItClickable } from "../utils/bot-utils";
 import { decrypt } from "../utils/encryption-utils";
 import { handleConfirmDetails } from "./add-raffle-actions";
 import { handleSelectWallet } from "./referal-code";
+
 export const generateWalletSeedScene = "generateWalletSeedScene";
 export const generateWalletSeedStep = new Scenes.BaseScene(
   generateWalletSeedScene
@@ -15,22 +16,23 @@ generateWalletSeedStep.enter((ctx) =>
   )
 );
 
-generateWalletSeedStep.on("text", (ctx) => {
+generateWalletSeedStep.on("text", async (ctx) => {  // Mark the function as async
   const walletName = ctx.message.text;
 
   if (walletName.length > 8) {
-    ctx.reply("Wallet name must be less than or equal to 8 characters");
+    await ctx.reply("Wallet name must be less than or equal to 8 characters");
   } else {
     if (ctx.session.wallets && ctx.session.wallets.length === 6) {
-      ctx.reply("Wallet limit reached");
+      await ctx.reply("Wallet limit reached");
     } else {
-      ctx.deleteMessage();
+      await ctx.deleteMessage();  // Ensure deletion is complete
 
       const newWallet = generateAccount();
       newWallet.name = walletName;
       ctx.session.wallets = [...(ctx.session.wallets ?? []), newWallet];
 
-      ctx.replyWithHTML(
+      // Send the message with wallet details
+      await ctx.replyWithHTML(
         `✅ New wallet <b>${walletName}</b> was successfully created & encrypted.\n\nAddress:\n${makeItClickable(
           newWallet.address
         )}\nPrivate Key:\n${makeItClickable(
@@ -40,18 +42,17 @@ generateWalletSeedStep.on("text", (ctx) => {
         )}\n\nMake sure to save the information above offline. Never send it to anyone, and never hold it in a plain text format on a device connected to the internet. You can also import the wallet above in your Web3 wallet provider (Metamask, Trust Wallet, etc).\n\nOnce you're finished writing down your secret phrase, delete this message. DracoFlip will never display this information again.\n\nSubmit the /wallets command to check the wallet.`
       );
 
-      // Redirect to confirm payment method if needed
+      // Now handle redirection or other session needs
       if (ctx.session.selectWalletReferal) {
-        ctx.scene.leave();
-        handleSelectWallet(ctx);
+        await ctx.scene.leave(); // Ensure the scene is left before proceeding
+        await handleSelectWallet(ctx); // Handle the wallet referral
         ctx.session.selectWalletReferal = false;
-      }
-      if (ctx.session.needsPaymentConfirmation) {
-        ctx.scene.leave();
-        handleConfirmDetails(ctx, ctx.session.wallets);
+      } else if (ctx.session.needsPaymentConfirmation) {
+        await ctx.scene.leave(); // Ensure the scene is left before proceeding
+        await handleConfirmDetails(ctx, ctx.session.wallets); // Handle payment confirmation
         ctx.session.needsPaymentConfirmation = false;
       } else {
-        ctx.scene.leave();
+        await ctx.scene.leave(); // Leave the scene if no other actions are needed
       }
     }
   }

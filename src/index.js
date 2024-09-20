@@ -21,7 +21,7 @@ import {
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
   handleCreateRaffleWithoutReferral,
-  handleGroupIdInput
+  handleGroupIdInput,
 } from "./scenes/add-raffle-actions";
 import {
   handleReferralCode,
@@ -83,6 +83,7 @@ async function checkBlockedUser(ctx, userId) {
     }
   }
 }
+
 // Handle the start command
 bot.start(async (ctx) => {
   if (ctx.chat?.type.includes("group")) {
@@ -125,7 +126,10 @@ bot.start(async (ctx) => {
 
 // Handle the "Create/Update a raffle" button action
 bot.action("CREATE_UPDATE_RAFFLE", async (ctx) => {
-  // Add logic here to create or update a raffle
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
+  await ctx.reply("Create Raffle option selected");
   await handleAddRaffle(ctx); // Assuming handleAddRaffle is the function to start the raffle creation/update process
 });
 
@@ -146,7 +150,9 @@ bot.use(async (ctx, next) => {
 // back buttons
 
 bot.action("back-to-main-menu", async (ctx) => {
-  ctx.deleteMessage();
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   delete ctx.session.selectedDeleteWalletName;
   delete ctx.session.selectedPlayWalletName;
   delete ctx.session.selectedRefundWalletName;
@@ -162,7 +168,9 @@ bot.command("wallets", async (ctx) => {
 });
 
 bot.action("wallets", async (ctx) => {
-  ctx.deleteMessage();
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
@@ -171,27 +179,40 @@ bot.command("lucky", async (ctx) => {
 });
 
 bot.action("metamask", async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   await handleMetamaskApplication(ctx);
 });
 
 // create wallet buttons
-bot.action("import-existing-wallet", (ctx) => {
+bot.action("import-existing-wallet", async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   ctx.scene.enter(importWalletScene);
 });
 
-bot.action("generate-wallet-seed", (ctx) => {
+bot.action("generate-wallet-seed", async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   ctx.scene.enter(generateWalletSeedScene);
 });
 
 // delete buttons
 
 bot.action("btn-delete-wallet", async (ctx) => {
-  ctx.deleteMessage();
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   await btnDeleteWalletAction(ctx, ctx.session.wallets);
 });
 
 bot.action(/^delete-wallet-/, async (ctx) => {
-  ctx.deleteMessage();
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   const walletName = ctx.update.callback_query.data.split("-")[2];
   ctx.session.selectedDeleteWalletName = walletName;
   const wallet = getWalletByName(ctx, walletName);
@@ -199,7 +220,9 @@ bot.action(/^delete-wallet-/, async (ctx) => {
 });
 
 bot.action("confirm-delete-wallet", async (ctx) => {
-  ctx.deleteMessage();
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   ctx.session.wallets = ctx.session.wallets.filter(
     (_wallet) => _wallet.name !== ctx.session.selectedDeleteWalletName
   );
@@ -216,23 +239,34 @@ bot.action("confirm-delete-wallet", async (ctx) => {
 
 // ----------------- referal code start -----------
 bot.command("referral_code", async (ctx) => {
+ 
   await handleReferralCode(ctx);
 });
 
 bot.action("create_new_referral", async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   await handleCreateNewReferal(ctx);
 });
 
 bot.action("input_wallet_address", async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   await handleInputWalletPrompt(ctx);
 });
 
 bot.action("select_wallet_address", async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   await handleSelectWallet(ctx);
 });
 
 // Bot action to handle wallet selection from the inline keyboard
 bot.action(/^select_wallet_/, async (ctx) => {
+  
   const walletAddress = ctx.match.input.split("select_wallet_")[1]; // Extract wallet address from callback data
 
   if (!walletAddress) {
@@ -251,7 +285,7 @@ bot.action("enter_referral_again", async (ctx) => {
 // Handle "Proceed without referral" option
 bot.action("proceed_without_referral", async (ctx) => {
   const walletAddress = ctx.session.walletAddress;
-  await handleCreateRaffleWithoutReferral(ctx,walletAddress); // Proceed without referral
+  await handleCreateRaffleWithoutReferral(ctx, walletAddress); // Proceed without referral
 });
 
 // ----------------- referal code end -----------
@@ -259,9 +293,13 @@ bot.action("proceed_without_referral", async (ctx) => {
 // -------------- create raffle start ------------
 // Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
+
   const walletAddress = ctx.match[1]; // Extract wallet address from callback data
 
-  await ctx.reply(
+  prevMessageState.prevMessage = await ctx.reply(
     `Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`,
     {
       reply_markup: {
@@ -281,16 +319,20 @@ bot.action(/^wallet_(.*)/, async (ctx) => {
     }
   );
 });
-bot.command("wal",async(ctx)=>{
-  console.log("wallets",ctx.session.wallets);
-})
+
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   const walletAddress = ctx.match[1]; // Extract wallet address from callback data
   await handleCreateRaffleWithReferral(ctx, walletAddress);
 });
 // Handle "No, continue without referral"
 bot.action(/^no_referral_(.*)/, async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   const walletAddress = ctx.match[1]; // Extract wallet address from callback data
   await handleCreateRaffleWithoutReferral(ctx, walletAddress);
 });
@@ -407,25 +449,36 @@ bot.on("left_chat_member", async (ctx) => {
 
 bot.action(/^SELECT_GROUP_/, handleGroupSelection);
 
-
 bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
+  await ctx.reply("Add Raffle option selected");
   const groupId = ctx.match[1];
-
   try {
     await handleGroupIdInput(ctx, groupId);
   } catch (error) {
     console.error("Error handling ADD_RAFFLE action:", error);
-    ctx.reply("An error occurred while trying to add a new raffle. Please try again.");
+    ctx.reply(
+      "An error occurred while trying to add a new raffle. Please try again."
+    );
   }
 });
 
 bot.action(/^UPDATE_RAFFLE_(.*)/, async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
+  await ctx.reply("Update Raffle option selected");
   const groupId = ctx.match[1];
   // Handle the logic for updating a running raffle
   await ctx.reply(`Updating a running raffle for group ID: ${groupId}`);
 });
 
 bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
   const groupId = ctx.match[1];
   // Handle the logic for viewing raffle details
   await ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
