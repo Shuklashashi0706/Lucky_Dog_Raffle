@@ -54,7 +54,6 @@ export const createRaffle = async (ctx, privateKey) => {
   contract.on(
     "RaffleCreated",
     async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
-
       // Save raffle details to the database
       const raffleDetails = {
         raffleId: raffleId.toNumber(), // Convert BigNumber to number
@@ -103,7 +102,11 @@ export const createRaffle = async (ctx, privateKey) => {
     await ctx.reply("Raffle is created successfully ✨");
 
     // Send a message to the group using the Telegram API
-    const botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
+    let botIDAndToken;
+    if (process.env.LOCAL_TELEGRAM_BOT_TOKEN) {
+       botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
+    }
+    botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
     const message = "Raffle is created successfully ✨";
 
     if (createdGroup) {
