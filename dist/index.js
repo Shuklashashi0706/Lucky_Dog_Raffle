@@ -33,6 +33,7 @@ const message_utils_1 = require("./utils/message-utils");
 const handle_lucky_command_1 = require("./scenes/handle-lucky-command");
 const createRaffle_1 = require("./utils/createRaffle");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
+const handle_lucky_command_2 = require("./scenes/handle-lucky-command");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -40,7 +41,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-    bot = new telegraf_1.Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
+    bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
 }
 else {
     bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
@@ -49,6 +50,7 @@ const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
     generateWalletSeedScene_2.generateWalletSeedStep,
+    handle_lucky_command_2.luckyScene,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -135,7 +137,7 @@ bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
 bot.command("lucky", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    (0, handle_lucky_command_1.handleLuckyCommand)(ctx, bot);
+    ctx.scene.enter("LUCKY_SCENE");
 }));
 bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, add_raffle_actions_2.handleMetamaskApplication)(ctx);
@@ -238,6 +240,9 @@ bot.action(/^no_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, funct
     yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress);
 }));
 // -------------- create raffle end ------------
+bot.command("wal", (ctx) => {
+    console.log(ctx.session.wallets);
+});
 // -----------------------adding bot to group-------------------
 bot.on("new_chat_members", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)) {
@@ -402,9 +407,6 @@ bot.action("CANCEL_ADD_RAFL", (ctx) => {
         (0, message_utils_1.deletePreviousMessage)(ctx);
     (0, add_raffle_actions_1.handleCancel)(ctx);
 });
-bot.action(/buy_ticket_(\d+)_(\w+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    (0, handle_lucky_command_1.handleBuyTicket)(ctx);
-}));
 // Connect to the database
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {
@@ -417,9 +419,6 @@ else if (process.env.NODE_ENV === "production") {
     app.use(express_1.default.json());
     app.use(bot.webhookCallback("/secret-path"));
     bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
-    // bot.telegram.setWebhook(
-    //   `https://8bad-103-215-237-202.ngrok-free.app/secret-path`
-    // );
     app.get("/", (req, res) => {
         res.send("Server is running");
     });

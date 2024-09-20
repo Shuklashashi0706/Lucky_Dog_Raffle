@@ -1,7 +1,7 @@
 import { Wallet, ethers, Contract } from "ethers";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import axios from "axios";
-
+import Raffle from "../models/raffle";
 export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
@@ -28,9 +28,8 @@ export const createRaffle = async (ctx, privateKey) => {
   const userDetails = userState[userKey] || {};
   const { createdGroup } = userDetails;
 
-
-  const _maxTickets = 0; // Default to zero; adjust based on your application needs
-  const _raffleEndTime = _maxTickets === 0 ? raffleEndValue : 0; // Set to zero if max tickets is used
+  const _maxTickets = 0; 
+  const _raffleEndTime = _maxTickets === 0 ? raffleEndValue : 0; 
 
   // Ensure the TG owner is set correctly
   const _tgOwner = wallet.address;
@@ -43,7 +42,6 @@ export const createRaffle = async (ctx, privateKey) => {
     return;
   }
 
-  // Ensure referrer and owner are not the same
   const _referrer = referrer;
   if (_referrer === wallet.address) {
     ctx.reply("Referrer cannot be the same as the raffle admin.");
@@ -74,7 +72,6 @@ export const createRaffle = async (ctx, privateKey) => {
 
     // Notify the user of the transaction hash
     await ctx.reply(`Transaction sent: ${tx.hash}`);
-
     await ctx.reply(`Your transaction is getting mined , please wait.....`);
     const receipt = await tx.wait();
     // Notify the user that the transaction has been mined
@@ -85,12 +82,29 @@ export const createRaffle = async (ctx, privateKey) => {
     const botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN; // Ensure your bot token is stored in environment variables
     const message = "Raffle is created successfully ✨";
 
-    if (createdGroup) {
+    const raffle = new Raffle({
+      createdBy: ctx.from?.username?.toString(),
+      createdGroup: state.createdGroup,
+      raffleTitle: state.raffleTitle,
+      rafflePrice: state.rafflePrice,
+      splitPool: state.splitPool,
+      splitPercentage: state.splitPercentage || null,
+      ownerWalletAddress: state.ownerWalletAddress || null,
+      startTimeOption: state.startTimeOption,
+      startTime: state.startTime,
+      raffleLimitOption: state.raffleLimitOption,
+      raffleEndTime: state.raffleEndTime || null,
+      raffleEndValue: state.raffleEndValue || null,
+      rafflePurpose: state.rafflePurpose,
+      raffleStatus: "RUNNING",
+    });
 
+    await raffle.save();
+
+    if (createdGroup) {
       const telegramApiUrl = `https://api.telegram.org/bot${botIDAndToken}/sendMessage?chat_id=${createdGroup}&text=${encodeURIComponent(
         message
       )}`;
-
       try {
         const res = await axios.get(telegramApiUrl);
         if (res.status === 200) {

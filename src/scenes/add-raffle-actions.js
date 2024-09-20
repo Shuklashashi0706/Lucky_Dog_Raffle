@@ -328,7 +328,6 @@ export const handleConfirmDetails = async (ctx, wallets) => {
 };
 
 // ----------------------------------------
-
 // Function to handle creating a raffle with a referral
 export const handleCreateRaffleWithReferral = async (ctx, walletAddress) => {
   const chatId = ctx.chat?.id.toString();
@@ -430,7 +429,6 @@ export const handleMetamaskApplication = async (ctx) => {
         );
         return;
       }
-
       const transaction = await transact(
         ctx,
         "0xd99FF85E7377eF02E6996625Ad155a2E4C63E7be"
