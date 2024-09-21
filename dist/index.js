@@ -34,6 +34,7 @@ const handle_lucky_command_1 = require("./scenes/handle-lucky-command");
 const createRaffle_1 = require("./utils/createRaffle");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
 const handle_lucky_command_2 = require("./scenes/handle-lucky-command");
+const buyTickets_1 = require("./utils/buyTickets");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -208,7 +209,7 @@ bot.action("proceed_without_referral", (ctx) => __awaiter(void 0, void 0, void 0
 // -------------- create raffle start ------------
 // Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    const walletAddress = ctx.match[1]; // Extract wallet address from callback data
+    const walletAddress = ctx.match[1];
     yield ctx.reply(`Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`, {
         reply_markup: {
             inline_keyboard: [
@@ -226,9 +227,18 @@ bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* 
         },
     });
 }));
-bot.command("wal", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("wallets", ctx.session.wallets);
+bot.action(/^wallet1_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    (0, buyTickets_1.handlePaymentConfirmation)();
 }));
+bot.action(/buy_ticket_(\d+)_(\w+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    (0, handle_lucky_command_1.handleBuyTicketAction)(ctx);
+}));
+bot.command("test", (ctx) => {
+    ctx.session.waitingForTickets = true;
+});
+bot.command("testp", (ctx) => {
+    console.log(ctx.session.waitingForTickets);
+});
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const walletAddress = ctx.match[1]; // Extract wallet address from callback data
@@ -240,9 +250,6 @@ bot.action(/^no_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, funct
     yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress);
 }));
 // -------------- create raffle end ------------
-bot.command("wal", (ctx) => {
-    console.log(ctx.session.wallets);
-});
 // -----------------------adding bot to group-------------------
 bot.on("new_chat_members", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)) {

@@ -1,23 +1,22 @@
 import Raffle from "../models/raffle";
-import {  Markup, Scenes } from "telegraf";
+import { Markup, Scenes } from "telegraf";
 import { buyTickets } from "../utils/buyTickets";
 import { getWalletByAddress } from "../utils/bot-utils";
-
+import { userStateSchema } from "../types/ask-raffle";
+export const luckySceneState = {}
 export const luckyScene = new Scenes.BaseScene("LUCKY_SCENE");
 
 luckyScene.enter(async (ctx) => {
   try {
     const groupId = ctx.chat.id;
-
     const raffle = await Raffle.findOne({
-      createdGroup: groupId,
-      raffleStatus: "RUNNING",
+      groupId: "-1002211654478",
+      isActive: true,
     });
-
     if (!raffle) {
       return ctx.reply("No raffle is currently running.");
     }
-
+    
     return ctx.replyWithMarkdown(
       `🎉 *Current Raffle:* ${raffle.raffleTitle}\n💰 *Prize*: ${raffle.rafflePrice} \n🎟 *Ticket Price*: ${raffle.rafflePrice} ETH`,
       Markup.inlineKeyboard([
@@ -33,32 +32,44 @@ luckyScene.enter(async (ctx) => {
   }
 });
 
+export const handleBuyTicketAction = async (ctx) => {
+  try {
+    if (ctx.callbackQuery && "data" in ctx.callbackQuery) {
+      const callbackData = ctx.callbackQuery.data;
 
-luckyScene.action(/buy_ticket_(\d+)_(\w+)/, async (ctx) => {
-  const walletAddress = ctx.session.wallets;
-  console.log(walletAddress)
-  const wallet = getWalletByAddress(ctx, walletAddress);
-  // const privateKey = decrypt(wallet.privateKey);
-  // const privateKey = "ff47cd585855776ead11b1870227a67f67f528c0ed12d4b8690ed2085a697954";
-  buyTickets(ctx,privateKey,1)
-  const callbackData = ctx.match; 
-  const userId = callbackData[1];
-  const raffleId = callbackData[2];
+      const dataParts = callbackData.split("_");
 
-  const raffle = await Raffle.findById(raffleId);
-  if (!raffle) {
-    await ctx.reply("Raffle not found.");
-    return;
-  } 
+      const userId = dataParts[2];
+      const raffleId = dataParts[3];
 
-  await ctx.telegram.sendMessage(
-    userId,
-    `You are purchasing a ticket from Group: ${raffle.createdGroup} RaffleTitle: ${raffle.raffleTitle}`,
-    {
-      parse_mode: "Markdown",
+      const raffle = await Raffle.findById(raffleId);
+
+      if (!raffle) {
+        await ctx.reply("Raffle not found.");
+        return;
+      }
+
+      ctx.session.raffleId = raffleId;
+      ctx.session.userId = userId;
+      ctx.session.waitingForTickets = true;
+      if (!luckySceneState[ctx.from.id]) {
+        luckySceneState[ctx.from.id] = {};  
+      }
+      luckySceneState[ctx.from.id].waitingForTickets = true;
+      
+      const ticketsMessage = `How many tickets would you like to purchase!!`;
+
+      await ctx.telegram.sendMessage(userId, ticketsMessage, {
+        parse_mode: "Markdown",
+      });
+
+      await ctx.answerCbQuery("Details have been sent to your DMs.");
+    } else {
+      console.error("Callback query does not contain data");
     }
-  );
-  await ctx.reply("How many tickets would you like to purchase?");
- 
-  ctx.scene.leave();
-});
+  } catch (error) {
+    console.error("Error processing buy ticket:", error);
+    await ctx.reply("Something went wrong. Please try again.");
+  }
+};
+

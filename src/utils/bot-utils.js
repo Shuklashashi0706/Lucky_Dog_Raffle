@@ -11,6 +11,7 @@ import {
 } from './account-utils';
 import { CHAIN } from '../config';
 
+
 // Get wallet total balance
 export async function getWalletTotalBalance(walletAddress, selectedChainObjKey = '') {
   let totalWalletBalanceInEth = '';

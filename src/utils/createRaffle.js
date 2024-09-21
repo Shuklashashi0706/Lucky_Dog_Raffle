@@ -1,11 +1,13 @@
 import { Wallet, ethers, Contract } from "ethers";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
+import Raffle from "../models/raffle"; // Import your Raffle model
 import axios from "axios";
 import Raffle from "../models/raffle";
 export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
   );
+
   if (!privateKey) {
     ctx.reply(
       "Private key is not defined...just for testing purpose ...remove it"
@@ -14,27 +16,23 @@ export const createRaffle = async (ctx, privateKey) => {
   const wallet = new Wallet(privateKey, provider);
   const userState = ctx.session.userState || {};
 
-  // Destructuring userState with default values for missing fields
   const {
     rafflePrice = ethers.utils.parseEther("0.01"),
-    startTime = Math.floor(Date.now() / 1000) + 3600, // Default start time (1 hour from now)
+    startTime = Math.floor(Date.now() / 1000) + 3600, 
     raffleEndValue = Math.floor(Date.now() / 1000) + 86400, // Default end time (24 hours from now)
-    splitPool, // For determining _tgOwnerPercentage, default if split is NO
-    maxBuyPerWallet = 10, // Default max tickets per wallet
-    referrer = ethers.constants.AddressZero, // Default no referrer
+    splitPool,
+    maxBuyPerWallet = 10,
+    referrer = ethers.constants.AddressZero,
   } = userState;
 
   const userKey = Object.keys(userState)[0];
   const userDetails = userState[userKey] || {};
   const { createdGroup } = userDetails;
 
-  const _maxTickets = 0; 
-  const _raffleEndTime = _maxTickets === 0 ? raffleEndValue : 0; 
-
-  // Ensure the TG owner is set correctly
+  const _maxTickets = 0; // Default to zero; adjust based on your application needs
+  const _raffleEndTime = _maxTickets === 0 ? raffleEndValue : 0; // Set to zero if max tickets is used
   const _tgOwner = wallet.address;
 
-  // Validate TG owner is not a zero address
   if (_tgOwner === ethers.constants.AddressZero) {
     ctx.reply(
       "TG owner cannot be a zero address. Please check the configuration."
@@ -48,15 +46,37 @@ export const createRaffle = async (ctx, privateKey) => {
     return;
   }
 
-  // Set TG owner percentage based on splitPool value
-  const _tgOwnerPercentage = splitPool === "YES" ? 500 : 0; // 5% if splitPool is YES
-
-  // Default values for other inputs
+  const _tgOwnerPercentage = splitPool === "YES" ? 500 : 0; 
   const _entryCost = rafflePrice;
   const _raffleStartTime = startTime;
 
   const contract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
-
+  contract.on(
+    "RaffleCreated",
+    async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
+      const raffleDetails = {
+        raffleId: raffleId.toNumber(), // Convert BigNumber to number
+        admin: admin,
+        entryCost: ethers.utils.formatEther(entryCost), // Format to Ether
+        raffleStartTime: _raffleStartTime,
+        raffleEndTime: raffleEndTime.toNumber(),
+        maxTickets: maxTickets.toNumber(),
+        tgOwner: _tgOwner,
+        tgOwnerPercentage: _tgOwnerPercentage,
+        maxBuyPerWallet: maxBuyPerWallet,
+        referrer: _referrer,
+        isActive: true,
+        groupId: createdGroup,
+      };
+      try {
+        const newRaffle = new Raffle(raffleDetails);
+        await newRaffle.save();
+        console.log("Raffle saved successfully");
+      } catch (dbError) {
+        console.error("Error saving raffle to database:", dbError);
+      }
+    }
+  );
   try {
     await ctx.reply("Your transaction is being processed, please wait...");
     const tx = await contract.createRaffle(
@@ -70,36 +90,22 @@ export const createRaffle = async (ctx, privateKey) => {
       referrer
     );
 
-    // Notify the user of the transaction hash
     await ctx.reply(`Transaction sent: ${tx.hash}`);
-    await ctx.reply(`Your transaction is getting mined , please wait.....`);
+    await ctx.reply(`Your transaction is getting mined, please wait...`);
+    // Listen for the 'RaffleCreated' event
+
     const receipt = await tx.wait();
-    // Notify the user that the transaction has been mined
+
     await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     await ctx.reply("Raffle is created successfully ✨");
 
-    // Send the message to the group using the Telegram API
-    const botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN; // Ensure your bot token is stored in environment variables
+    // Send a message to the group using the Telegram API
+    let botIDAndToken;
+    if (process.env.LOCAL_TELEGRAM_BOT_TOKEN) {
+       botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
+    }
+    botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
     const message = "Raffle is created successfully ✨";
-
-    const raffle = new Raffle({
-      createdBy: ctx.from?.username?.toString(),
-      createdGroup: state.createdGroup,
-      raffleTitle: state.raffleTitle,
-      rafflePrice: state.rafflePrice,
-      splitPool: state.splitPool,
-      splitPercentage: state.splitPercentage || null,
-      ownerWalletAddress: state.ownerWalletAddress || null,
-      startTimeOption: state.startTimeOption,
-      startTime: state.startTime,
-      raffleLimitOption: state.raffleLimitOption,
-      raffleEndTime: state.raffleEndTime || null,
-      raffleEndValue: state.raffleEndValue || null,
-      rafflePurpose: state.rafflePurpose,
-      raffleStatus: "RUNNING",
-    });
-
-    await raffle.save();
 
     if (createdGroup) {
       const telegramApiUrl = `https://api.telegram.org/bot${botIDAndToken}/sendMessage?chat_id=${createdGroup}&text=${encodeURIComponent(
@@ -113,7 +119,7 @@ export const createRaffle = async (ctx, privateKey) => {
           console.error("Failed to send message to the group:");
         }
       } catch (apiError) {
-        console.error("Failed to send message to the group:");
+        console.error("Failed to send message to the group:", apiError);
       }
     } else {
       console.error("Group ID is undefined or invalid.");

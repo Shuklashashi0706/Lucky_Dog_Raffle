@@ -41,11 +41,13 @@ import { prevMessageState } from "./utils/state";
 import { deletePreviousMessage } from "./utils/message-utils";
 import {
   handleBuyTicket,
+  handleBuyTicketAction,
   handleLuckyCommand,
 } from "./scenes/handle-lucky-command";
 import { createRaffle } from "./utils/createRaffle";
 import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
 import { luckyScene } from "./scenes/handle-lucky-command";
+import { handlePaymentConfirmation } from "./utils/buyTickets";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -261,8 +263,7 @@ bot.action("proceed_without_referral", async (ctx) => {
 // -------------- create raffle start ------------
 // Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, async (ctx) => {
-  const walletAddress = ctx.match[1]; // Extract wallet address from callback data
-
+  const walletAddress = ctx.match[1];
   await ctx.reply(
     `Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`,
     {
@@ -283,9 +284,20 @@ bot.action(/^wallet_(.*)/, async (ctx) => {
     }
   );
 });
-bot.command("wal", async (ctx) => {
-  console.log("wallets", ctx.session.wallets);
+bot.action(/^wallet1_(.*)/, async (ctx) => {
+  handlePaymentConfirmation();
 });
+
+bot.action(/buy_ticket_(\d+)_(\w+)/, async (ctx) => {
+  handleBuyTicketAction(ctx);
+});
+bot.command("test", (ctx) => {
+  ctx.session.waitingForTickets = true;
+});
+bot.command("testp", (ctx) => {
+  console.log(ctx.session.waitingForTickets);
+});
+
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, async (ctx) => {
   const walletAddress = ctx.match[1]; // Extract wallet address from callback data
@@ -297,9 +309,6 @@ bot.action(/^no_referral_(.*)/, async (ctx) => {
   await handleCreateRaffleWithoutReferral(ctx, walletAddress);
 });
 // -------------- create raffle end ------------
-bot.command("wal", (ctx) => {
-  console.log(ctx.session.wallets);
-});
 
 // -----------------------adding bot to group-------------------
 bot.on("new_chat_members", async (ctx) => {

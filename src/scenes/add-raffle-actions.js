@@ -12,6 +12,8 @@ import { createRaffle } from "../utils/createRaffle";
 import Referral from "../models/referal";
 import { getWalletByAddress } from "../utils/bot-utils";
 import { decrypt } from "../utils/encryption-utils";
+import { buyTickets } from "../utils/buyTickets";
+import { luckySceneState } from "./handle-lucky-command";
 const userState = {};
 
 // Function to format a message with borders
@@ -277,12 +279,15 @@ export const handleConfirmDetails = async (ctx, wallets) => {
 
     // Map wallets to individual button objects and place each button in its own array (as a row)
     const walletButtons = wallets.map((wallet, index) => {
-      const formattedAddress = `${wallet.address.slice(0, 5)}...........${wallet.address.slice(-4)}`;
+      const formattedAddress = `${wallet.address.slice(
+        0,
+        5
+      )}...........${wallet.address.slice(-4)}`;
       return [
         {
           text: formattedAddress,
           callback_data: `wallet_${wallet.address}`,
-        }
+        },
       ]; // Wrapping each button inside an array to form a row
     });
 
@@ -503,7 +508,7 @@ export const handleGroupIdInput = async (ctx, groupId) => {
 
     state.createdGroup = groupId;
     state.stage = "ASK_RAFFLE_TITLE";
-    userState[chatId] = state; // Ensure state is updated in userState
+    userState[chatId] = state; 
 
     await ctx.reply(formatMessage("Enter the Raffle Title:"));
   } catch (error) {
@@ -531,12 +536,25 @@ export const handleGroupIdInput = async (ctx, groupId) => {
 // Handle text inputs from the user
 export const handleTextInputs = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
-
-  //handling creation of referal
+  
   if (ctx.session.awaitingWalletAddress) {
     await handleWalletAddressInput(ctx);
   }
 
+  
+  if(luckySceneState[ctx.from.id].waitingForTickets){
+    const input = ctx.message.text;
+    const ticketCount = parseInt(input);
+    luckySceneState[ctx.from.id].ticketCount = ticketCount;
+    if (isNaN(ticketCount) || ticketCount <= 0) {
+      return ctx.reply("Please enter a valid number of tickets.");
+    }
+    luckySceneState[ctx.from.id].waitingForTickets = false;
+    buyTickets(ctx);
+
+
+
+  }
   if (chatId) {
     const state = userState[chatId];
     if (state) {
