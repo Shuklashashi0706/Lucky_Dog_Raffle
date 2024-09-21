@@ -1,5 +1,6 @@
 import Referral from "../models/referal"; // Import the Referral model
 import { z } from "zod";
+import { prevMessageState } from "../utils/state";
 
 // Schema for validating Ethereum address using Zod
 const walletAddressSchema = z
@@ -40,17 +41,17 @@ export const handleReferralCode = async (ctx) => {
 
     if (existingReferrals.length > 0) {
       // Prepare buttons showing existing referral codes and wallet addresses
-      const referralButtons = existingReferrals.map((referral) => {
+      const referralButtons = existingReferrals.map((referral,i) => {
         // Format the wallet address to show the first 4 and last 4 characters
         const formattedAddress = `${referral.walletAddress.slice(
           0,
           5
-        )}.................................${referral.walletAddress.slice(-4)}`;
+        )}...${referral.walletAddress.slice(-4)}`;
 
         return [
           {
             text: `${referral.referralCode} - ${formattedAddress}`, // Display in "Referral Code - Formatted Wallet Address" format
-            callback_data: "noop",
+            callback_data: `noop${i}`,
           },
         ];
       });
@@ -64,7 +65,7 @@ export const handleReferralCode = async (ctx) => {
       ]);
 
       // Reply with the list of existing referrals and the option to create new ones
-      ctx.reply("Your referral codes created in the past:", {
+      prevMessageState.prevMessage =  ctx.reply("Your referral codes created in the past:", {
         reply_markup: {
           inline_keyboard: referralButtons,
         },
@@ -107,7 +108,7 @@ export const handleCreateNewReferal = async (ctx) => {
     const inlineKeyboard = [[inputWalletButton], [selectWalletButton]];
 
     // Reply with the message and the inline keyboard
-    await ctx.reply("How would you like to create a new referral?", {
+    prevMessageState.prevMessage = await ctx.reply("How would you like to create a new referral?", {
       reply_markup: {
         inline_keyboard: inlineKeyboard,
       },
@@ -198,7 +199,7 @@ export const handleSelectWallet = async (ctx) => {
             const formattedAddress = `${wallet.address.slice(
               0,
               5
-            )}...........${wallet.address.slice(-4)}`;
+            )}...${wallet.address.slice(-4)}`;
             return [
               {
                 text: `Wallet ${index + 1}: ${formattedAddress}`,
@@ -220,7 +221,7 @@ export const handleSelectWallet = async (ctx) => {
     walletButtons.push(addWalletButton);
     ctx.session.selectWalletReferal = true;
     // Send the list of wallet addresses as a vertical inline keyboard, including the add wallet button
-    await ctx.reply(
+    prevMessageState.prevMessage = await ctx.reply(
       "Select a wallet to create a referral code, or add a new wallet address:",
       {
         reply_markup: {

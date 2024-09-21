@@ -10,6 +10,7 @@ import {
   getHistory,
 } from './account-utils';
 import { CHAIN } from '../config';
+import { prevMessageState } from './state';
 
 
 // Get wallet total balance
@@ -57,7 +58,7 @@ export function makeItClickable(text) {
 
 // Reply with HTML and inline keyboards
 export function replyWithHTMLAndInlineKeyboard(ctx, htmlMessage, inlineKeyboard) {
-  ctx.replyWithHTML(htmlMessage, {
+  prevMessageState.prevMessage = ctx.replyWithHTML(htmlMessage, {
     reply_markup: {
       inline_keyboard: inlineKeyboard,
     },

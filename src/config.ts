@@ -15,7 +15,7 @@ type Chains = {
 export const CHAIN: Chains = {
   sepolia: {
     rpcUrl:
-      "https://eth-sepolia.g.alchemy.com/v2/WRfmzLBj8D-0bD76QLpD7DjZu5rUIAtE",
+      `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_RPC_API_KEY}`,
   },
   "mumbai-testnet": {
     rpcUrl:
@@ -128,6 +128,61 @@ export const RAFFLE_ABI: any[] = [
       },
     ],
     name: "RaffleEnded",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "uint256",
+        name: "raffleId",
+        type: "uint256",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "admin",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "maxTickets",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "raffleEndTime",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "raffleStartTime",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "maxBuyPerWallet",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "newTgOwner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "newTgOwnerPercentage",
+        type: "uint256",
+      },
+    ],
+    name: "RaffleUpdated",
     type: "event",
   },
   {
@@ -349,6 +404,25 @@ export const RAFFLE_ABI: any[] = [
     type: "function",
   },
   {
+    inputs: [
+      { internalType: "uint256", name: "_raffleId", type: "uint256" },
+      { internalType: "uint256", name: "_newMaxTickets", type: "uint256" },
+      { internalType: "uint256", name: "_newRaffleEndTime", type: "uint256" },
+      { internalType: "uint256", name: "_newRaffleStartTime", type: "uint256" },
+      { internalType: "uint256", name: "_newMaxBuyPerWallet", type: "uint256" },
+      { internalType: "address", name: "_newTgOwner", type: "address" },
+      {
+        internalType: "uint256",
+        name: "_newTgOwnerPercentage",
+        type: "uint256",
+      },
+    ],
+    name: "updateRaffle",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
     inputs: [],
     name: "withdrawServiceFees",
     outputs: [],
@@ -357,4 +431,5 @@ export const RAFFLE_ABI: any[] = [
   },
 ];
 // Define the contract address
-export const RAFFLE_CONTRACT: string = "0x4652c3c335F1644beb68c55632c9DD8268aeb676";
+export const RAFFLE_CONTRACT: string =
+  "0x257C3d22dC8249A8b0308153B9F2C4F7FAa459D4";
