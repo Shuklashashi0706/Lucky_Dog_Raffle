@@ -28,7 +28,6 @@ import { generateWalletSeedStep } from "./scenes/generateWalletSeedScene";
 import { btnDeleteWalletAction } from "./utils/bot-utils";
 import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
-import { deletePreviousMessage } from "./utils/message-utils";
 import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
 dotenv.config();
 
@@ -39,7 +38,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 
 let bot;
 if (process.env.NODE_ENV === "development") {
-  bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
+  bot = new Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
 } else {
   bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 }
@@ -48,7 +47,6 @@ const stage = new Scenes.Stage([
   importWalletStep,
   chooseWalletNameStep,
   generateWalletSeedStep,
-  luckyScene,
   ...addRaffleScenes,
 ]);
 
@@ -154,7 +152,6 @@ bot.action("wallets", async (ctx) => {
   }
   await walletsCommand(ctx, ctx.session.wallets);
 });
-
 
 bot.action("metamask", async (ctx) => {
   if (prevMessageState.prevMessage) {
@@ -438,7 +435,6 @@ bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
   await ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
 });
 
-// Connect to the database
 connectDB();
 
 if (process.env.NODE_ENV === "development") {

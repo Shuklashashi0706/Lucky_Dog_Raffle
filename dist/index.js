@@ -29,12 +29,7 @@ const generateWalletSeedScene_2 = require("./scenes/generateWalletSeedScene");
 const bot_utils_2 = require("./utils/bot-utils");
 const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
-const message_utils_1 = require("./utils/message-utils");
-const handle_lucky_command_1 = require("./scenes/handle-lucky-command");
-const createRaffle_1 = require("./utils/createRaffle");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
-const handle_lucky_command_2 = require("./scenes/handle-lucky-command");
-const buyTickets_1 = require("./utils/buyTickets");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -51,7 +46,6 @@ const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
     generateWalletSeedScene_2.generateWalletSeedStep,
-    handle_lucky_command_2.luckyScene,
     ...add_raffle_actions_1.addRaffleScenes,
 ]);
 bot.use((0, telegraf_1.session)());
@@ -139,9 +133,6 @@ bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
     }
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
-}));
-bot.command("lucky", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    ctx.scene.enter("LUCKY_SCENE");
 }));
 bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -252,12 +243,6 @@ bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* 
         },
     });
 }));
-bot.action(/^wallet1_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    (0, buyTickets_1.handlePaymentConfirmation)();
-}));
-bot.action(/buy_ticket_(\d+)_(\w+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    (0, handle_lucky_command_1.handleBuyTicketAction)(ctx);
-}));
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -367,13 +352,7 @@ bot.action(/^ADD_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, functi
     ctx.scene.enter("raffleScene");
 }));
 bot.action(/^UPDATE_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    if (state_1.prevMessageState.prevMessage) {
-        yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
-    }
-    yield ctx.reply("Update Raffle option selected");
-    const groupId = ctx.match[1];
-    // Handle the logic for updating a running raffle
-    yield ctx.reply(`Updating a running raffle for group ID: ${groupId}`);
+    yield ctx.deleteMessage();
 }));
 bot.action(/^VIEW_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -383,7 +362,6 @@ bot.action(/^VIEW_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, funct
     // Handle the logic for viewing raffle details
     yield ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
 }));
-// Connect to the database
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {
     bot.launch(() => {
