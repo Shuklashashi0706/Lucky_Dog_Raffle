@@ -2,7 +2,7 @@ import { Wallet, ethers, Contract } from "ethers";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import Raffle from "../models/raffle"; // Import your Raffle model
 import axios from "axios";
-
+import Raffle from "../models/raffle";
 export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
@@ -18,7 +18,7 @@ export const createRaffle = async (ctx, privateKey) => {
 
   const {
     rafflePrice = ethers.utils.parseEther("0.01"),
-    startTime = Math.floor(Date.now() / 1000) + 3600, // Default start time (1 hour from now)
+    startTime = Math.floor(Date.now() / 1000) + 3600, 
     raffleEndValue = Math.floor(Date.now() / 1000) + 86400, // Default end time (24 hours from now)
     splitPool,
     maxBuyPerWallet = 10,
@@ -46,7 +46,7 @@ export const createRaffle = async (ctx, privateKey) => {
     return;
   }
 
-  const _tgOwnerPercentage = splitPool === "YES" ? 500 : 0; // 5% if splitPool is YES
+  const _tgOwnerPercentage = splitPool === "YES" ? 500 : 0; 
   const _entryCost = rafflePrice;
   const _raffleStartTime = startTime;
 
@@ -54,7 +54,6 @@ export const createRaffle = async (ctx, privateKey) => {
   contract.on(
     "RaffleCreated",
     async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
-      // Save raffle details to the database
       const raffleDetails = {
         raffleId: raffleId.toNumber(), // Convert BigNumber to number
         admin: admin,
@@ -69,7 +68,6 @@ export const createRaffle = async (ctx, privateKey) => {
         isActive: true,
         groupId: createdGroup,
       };
-
       try {
         const newRaffle = new Raffle(raffleDetails);
         await newRaffle.save();
@@ -102,18 +100,13 @@ export const createRaffle = async (ctx, privateKey) => {
     await ctx.reply("Raffle is created successfully ✨");
 
     // Send a message to the group using the Telegram API
-    let botIDAndToken;
-    if (process.env.LOCAL_TELEGRAM_BOT_TOKEN) {
-       botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
-    }
-    botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
+    const botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
     const message = "Raffle is created successfully ✨";
 
     if (createdGroup) {
       const telegramApiUrl = `https://api.telegram.org/bot${botIDAndToken}/sendMessage?chat_id=${createdGroup}&text=${encodeURIComponent(
         message
       )}`;
-
       try {
         const res = await axios.get(telegramApiUrl);
         if (res.status === 200) {

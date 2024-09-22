@@ -2,6 +2,7 @@ import { Scenes } from "telegraf";
 import { makeItClickable } from "../utils/bot-utils";
 import { handleConfirmDetails } from "./add-raffle-actions";
 import { handleSelectWallet } from "./referal-code";
+
 export const chooseWalletNameScene = "chooseWalletNameScene";
 export const chooseWalletNameStep = new Scenes.BaseScene(chooseWalletNameScene);
 
@@ -21,7 +22,7 @@ chooseWalletNameStep.on("text", async (ctx) => {
     if (ctx.session.wallets && ctx.session.wallets.length === 6) {
       await ctx.reply("Wallet limit reached");
     } else {
-      ctx.deleteMessage();
+      await ctx.deleteMessage(); // Ensure message deletion
 
       const newWallet = ctx.session.newWallet;
       newWallet.name = walletName;
@@ -32,24 +33,22 @@ chooseWalletNameStep.on("text", async (ctx) => {
           newWallet.address
         )}`
       );
-      // Redirect to confirm payment method if needed
+
       // Redirect to confirm payment method if needed
       if (ctx.session.selectWalletReferal) {
-        ctx.scene.leave();
-        handleSelectWallet(ctx);
+        await ctx.scene.leave(); // Ensure the scene is left before proceeding
+        await handleSelectWallet(ctx); // Handle the wallet referral
         ctx.session.selectWalletReferal = false;
-      }
-
-      if (ctx.session.needsPaymentConfirmation) {
-        ctx.scene.leave();
-        handleConfirmDetails(ctx, ctx.session.wallets);
+      } else if (ctx.session.needsPaymentConfirmation) {
+        await ctx.scene.leave(); // Ensure the scene is left before proceeding
+        await handleConfirmDetails(ctx, ctx.session.wallets); // Handle payment confirmation
         ctx.session.needsPaymentConfirmation = false;
       } else {
-        ctx.scene.leave();
+        await ctx.scene.leave(); // Leave the scene if no other actions are needed
       }
     }
   }
 
+  // Clear the newWallet session after usage
   delete ctx.session.newWallet;
-  ctx.scene.leave();
 });

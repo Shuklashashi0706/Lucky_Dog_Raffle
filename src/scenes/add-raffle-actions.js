@@ -12,6 +12,8 @@ import { createRaffle } from "../utils/createRaffle";
 import Referral from "../models/referal";
 import { getWalletByAddress } from "../utils/bot-utils";
 import { decrypt } from "../utils/encryption-utils";
+import { buyTickets } from "../utils/buyTickets";
+import { luckySceneState } from "./handle-lucky-command";
 const userState = {};
 
 // Function to format a message with borders
@@ -100,7 +102,7 @@ export const handleAddRaffle = async (ctx) => {
 
 // Handle group selection
 export const handleGroupSelection = async (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
+  await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
   const chatId = ctx.chat?.id.toString();
 
   if (chatId && ctx.callbackQuery && ctx.callbackQuery.data) {
@@ -231,7 +233,7 @@ export const handleSelectTime = (ctx) => {
     if (state) {
       state.startTimeOption = "SELECT";
       state.stage = "ASK_RAFFLE_START_TIME";
-      ctx.reply(
+      prevMessageState.prevMessage = ctx.reply(
         formatMessage(
           "Enter in days and hours after which you want to start.\nEg: 2d 5h"
         )
@@ -298,7 +300,7 @@ export const handleConfirmDetails = async (ctx, wallets) => {
     ]);
 
     // Send message with inline keyboard
-    await ctx.reply("Please confirm your payment method", {
+    prevMessageState.prevMessage = await ctx.reply("Please confirm your payment method", {
       reply_markup: {
         inline_keyboard: walletButtons, // This will now be an array of arrays (rows)
       },
@@ -319,7 +321,7 @@ export const handleConfirmDetails = async (ctx, wallets) => {
       callback_data: "metamask",
     };
 
-    await ctx.reply("How would you like to complete the transaction?", {
+    prevMessageState.prevMessage = await ctx.reply("How would you like to complete the transaction?", {
       reply_markup: {
         inline_keyboard: [[createWallet], [importWallet], [metamaskApp]], // Ensuring all buttons are wrapped in arrays (rows)
       },
@@ -331,7 +333,6 @@ export const handleConfirmDetails = async (ctx, wallets) => {
 };
 
 // ----------------------------------------
-
 // Function to handle creating a raffle with a referral
 export const handleCreateRaffleWithReferral = async (ctx, walletAddress) => {
   const chatId = ctx.chat?.id.toString();
@@ -433,7 +434,6 @@ export const handleMetamaskApplication = async (ctx) => {
         );
         return;
       }
-
       const transaction = await transact(
         ctx,
         "0xd99FF85E7377eF02E6996625Ad155a2E4C63E7be"
@@ -508,7 +508,7 @@ export const handleGroupIdInput = async (ctx, groupId) => {
 
     state.createdGroup = groupId;
     state.stage = "ASK_RAFFLE_TITLE";
-    userState[chatId] = state; // Ensure state is updated in userState
+    userState[chatId] = state; 
 
     await ctx.reply(formatMessage("Enter the Raffle Title:"));
   } catch (error) {
@@ -537,25 +537,42 @@ export const handleGroupIdInput = async (ctx, groupId) => {
 export const handleTextInputs = async (ctx) => {
   const chatId = ctx.chat?.id.toString();
 
-  //handling creation of referal
+  // Handling creation of referral
   if (ctx.session.awaitingWalletAddress) {
     await handleWalletAddressInput(ctx);
+    return; // Early return to avoid further processing
   }
 
+  
+  if(luckySceneState[ctx.from.id].waitingForTickets){
+    const input = ctx.message.text;
+    const ticketCount = parseInt(input);
+    luckySceneState[ctx.from.id].ticketCount = ticketCount;
+    if (isNaN(ticketCount) || ticketCount <= 0) {
+      return ctx.reply("Please enter a valid number of tickets.");
+    }
+    luckySceneState[ctx.from.id].waitingForTickets = false;
+    buyTickets(ctx);
+
+
+
+  }
   if (chatId) {
     const state = userState[chatId];
     if (state) {
       switch (state?.stage) {
         case "CREATE_RAFFLE":
-          handleCreateRaffleWithReferalInput(ctx);
+          await handleCreateRaffleWithReferalInput(ctx);
           break;
+
         case "ASK_GROUP_ID":
-          handleGroupIdInput(ctx);
+          await handleGroupIdInput(ctx);
           break;
+
         case "ASK_RAFFLE_TITLE":
           const titleError = validateField("raffleTitle", ctx.message?.text);
           if (titleError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Error: ${titleError}. Please enter a valid raffle title.`
               )
@@ -564,14 +581,14 @@ export const handleTextInputs = async (ctx) => {
           }
           state.raffleTitle = ctx.message?.text;
           state.stage = "ASK_RAFFLE_PRICE";
-          ctx.reply(formatMessage("Enter raffle Ticket Price(ETH):"));
+          await ctx.reply(formatMessage("Enter raffle Ticket Price (ETH):"));
           break;
 
         case "ASK_RAFFLE_PRICE":
           const price = Number(ctx.message.text);
           const priceError = validateField("rafflePrice", price);
           if (priceError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Error: ${priceError}. Please enter a valid non-negative number for the price.`
               )
@@ -598,7 +615,7 @@ export const handleTextInputs = async (ctx) => {
             splitPercent
           );
           if (splitPercentError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Error: ${splitPercentError}. Please enter a valid percentage between 0 and 100.`
               )
@@ -607,7 +624,7 @@ export const handleTextInputs = async (ctx) => {
           }
           state.splitPercentage = splitPercent;
           state.stage = "ASK_WALLET_ADDRESS";
-          ctx.reply(
+          await ctx.reply(
             formatMessage("Enter the wallet address to receive the share:")
           );
           break;
@@ -618,7 +635,7 @@ export const handleTextInputs = async (ctx) => {
             ctx.message.text
           );
           if (walletError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Error: ${walletError}. Please enter a valid Ethereum address.`
               )
@@ -639,9 +656,9 @@ export const handleTextInputs = async (ctx) => {
         case "ASK_RAFFLE_START_TIME":
           const startTimeError = validateField("startTime", ctx.message.text);
           if (startTimeError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
-                `Error: ${startTimeError}. Please enter a valid date and time in the format DD-MM-YYYY HH:MM.`
+                `Error: ${startTimeError}. Please enter a valid date and time in the format 2d 5h.`
               )
             );
             return;
@@ -661,7 +678,7 @@ export const handleTextInputs = async (ctx) => {
           const endValue = Number(ctx.message.text);
           const endValueError = validateField("raffleEndValue", endValue);
           if (endValueError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Error: ${endValueError}. Please enter a valid non-negative number for the raffle limit.`
               )
@@ -670,13 +687,13 @@ export const handleTextInputs = async (ctx) => {
           }
           state.raffleEndValue = endValue;
           state.stage = "ASK_RAFFLE_PURPOSE";
-          ctx.reply(formatMessage("Add raffle purpose or description:"));
+          await ctx.reply(formatMessage("Add raffle purpose or description:"));
           break;
 
         case "ASK_RAFFLE_END_TIME":
           const endTimeError = validateField("raffleEndTime", ctx.message.text);
           if (endTimeError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Error: ${endTimeError}. Please enter a valid date and time in the format Xd Yh.`
               )
@@ -685,13 +702,13 @@ export const handleTextInputs = async (ctx) => {
           }
           state.raffleEndTime = ctx.message.text;
           state.stage = "ASK_RAFFLE_PURPOSE";
-          ctx.reply(formatMessage("Add raffle purpose or description:"));
+          await ctx.reply(formatMessage("Add raffle purpose or description:"));
           break;
 
         case "ASK_RAFFLE_PURPOSE":
           const purposeError = validateField("rafflePurpose", ctx.message.text);
           if (purposeError) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Error: ${purposeError}. Please enter a valid raffle description.`
               )
@@ -701,7 +718,7 @@ export const handleTextInputs = async (ctx) => {
           state.rafflePurpose = ctx.message.text;
           const validationResult = validateUserState(state);
           if (!validationResult.success) {
-            ctx.reply(
+            await ctx.reply(
               formatMessage(
                 `Validation failed: ${validationResult.error.errors
                   .map((e) => e.message)
@@ -746,7 +763,7 @@ Raffle Description/Purpose: ${state.rafflePurpose}`);
           break;
 
         default:
-          ctx.reply(
+          await ctx.reply(
             formatMessage("Unexpected input. Please start the process again.")
           );
           break;
@@ -754,3 +771,4 @@ Raffle Description/Purpose: ${state.rafflePurpose}`);
     }
   }
 };
+
