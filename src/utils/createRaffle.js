@@ -118,7 +118,7 @@ Good luck to all participants! 🍀
           raffleTitle: ctx.session.raffleTitle,
           groupId: groupId,
           userId: ctx.from.id,
-          botId: 10,
+          botId: 10, //temporary
           entryCost: ethers.utils.formatEther(entryCost),
           raffleStartTime: _raffleStartTime,
           raffleEndTime: raffleEndTime.toNumber(),
@@ -138,7 +138,7 @@ Good luck to all participants! 🍀
 
           let botIDAndToken;
           if (process.env.NODE_ENV === "development") {
-            botIDAndToken = "7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU";
+            botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
           } else {
             botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
           }
