@@ -15,22 +15,22 @@ generateWalletSeedStep.enter((ctx) =>
   )
 );
 
-generateWalletSeedStep.on("text", (ctx) => {
+generateWalletSeedStep.on("text", async (ctx) => {
   const walletName = ctx.message.text;
 
   if (walletName.length > 8) {
-    ctx.reply("Wallet name must be less than or equal to 8 characters");
+    await ctx.reply("Wallet name must be less than or equal to 8 characters");
   } else {
     if (ctx.session.wallets && ctx.session.wallets.length === 6) {
-      ctx.reply("Wallet limit reached");
+      await ctx.reply("Wallet limit reached");
     } else {
-      ctx.deleteMessage();
+      await ctx.deleteMessage();
 
       const newWallet = generateAccount();
       newWallet.name = walletName;
       ctx.session.wallets = [...(ctx.session.wallets ?? []), newWallet];
 
-      ctx.replyWithHTML(
+      await ctx.replyWithHTML(
         `✅ New wallet <b>${walletName}</b> was successfully created & encrypted.\n\nAddress:\n${makeItClickable(
           newWallet.address
         )}\nPrivate Key:\n${makeItClickable(

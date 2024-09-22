@@ -123,8 +123,8 @@ export const handleGroupSelection = async (ctx) => {
 
           state.createdGroup = groupId;
           state.stage = "GROUP_ACTION_SELECTION";
-
-          await ctx.reply(
+          await ctx.reply(`You selected ${selectedGroup.groupUsername} for create/update raffle`);
+          prevMessageState.prevMessage = await ctx.reply(
             `What are you wanting to do for ${selectedGroup.groupUsername} group/channel today:`,
             Markup.inlineKeyboard([
               [
@@ -206,7 +206,7 @@ export const handleStartRaffleNow = async (ctx) => {
   if (chatId) {
     const state = userState[chatId];
     if (state) {
-      state.startTime = formatDate(new Date());
+      state.startTime = "0d 0h";
       state.startTimeOption = "NOW";
       ctx.reply(
         formatMessage("Your raffle will start as soon as it is created.")
@@ -233,7 +233,7 @@ export const handleSelectTime = (ctx) => {
       state.stage = "ASK_RAFFLE_START_TIME";
       ctx.reply(
         formatMessage(
-          "Enter the start date & time in this format DD-MM-YYYY HH:MM\nExample: 04-09-2024 15:06"
+          "Enter in days and hours after which you want to start.\nEg: 2d 5h"
         )
       );
     }
@@ -250,7 +250,7 @@ export const handleTimeBasedLimit = (ctx) => {
       state.stage = "ASK_RAFFLE_END_TIME";
       ctx.reply(
         formatMessage(
-          "Enter the end date & time in this format DD-MM-YYYY HH:MM\nExample: 04-09-2024 15:06"
+          "Enter in days and hours after which you want to end.\n Eg: 2d 5h"
         )
       );
     }
@@ -277,12 +277,15 @@ export const handleConfirmDetails = async (ctx, wallets) => {
 
     // Map wallets to individual button objects and place each button in its own array (as a row)
     const walletButtons = wallets.map((wallet, index) => {
-      const formattedAddress = `${wallet.address.slice(0, 5)}...........${wallet.address.slice(-4)}`;
+      const formattedAddress = `${wallet.address.slice(
+        0,
+        5
+      )}...${wallet.address.slice(-4)}`;
       return [
         {
           text: formattedAddress,
           callback_data: `wallet_${wallet.address}`,
-        }
+        },
       ]; // Wrapping each button inside an array to form a row
     });
 
@@ -675,7 +678,7 @@ export const handleTextInputs = async (ctx) => {
           if (endTimeError) {
             ctx.reply(
               formatMessage(
-                `Error: ${endTimeError}. Please enter a valid date and time in the format DD-MM-YYYY HH:MM.`
+                `Error: ${endTimeError}. Please enter a valid date and time in the format Xd Yh.`
               )
             );
             return;

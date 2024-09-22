@@ -21,7 +21,7 @@ import {
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
   handleCreateRaffleWithoutReferral,
-  handleGroupIdInput
+  handleGroupIdInput,
 } from "./scenes/add-raffle-actions";
 import {
   handleReferralCode,
@@ -125,6 +125,10 @@ bot.start(async (ctx) => {
 
 // Handle the "Create/Update a raffle" button action
 bot.action("CREATE_UPDATE_RAFFLE", async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
+  ctx.reply("You selected create/udpate raffle option");
   // Add logic here to create or update a raffle
   await handleAddRaffle(ctx); // Assuming handleAddRaffle is the function to start the raffle creation/update process
 });
@@ -251,7 +255,7 @@ bot.action("enter_referral_again", async (ctx) => {
 // Handle "Proceed without referral" option
 bot.action("proceed_without_referral", async (ctx) => {
   const walletAddress = ctx.session.walletAddress;
-  await handleCreateRaffleWithoutReferral(ctx,walletAddress); // Proceed without referral
+  await handleCreateRaffleWithoutReferral(ctx, walletAddress); // Proceed without referral
 });
 
 // ----------------- referal code end -----------
@@ -281,9 +285,9 @@ bot.action(/^wallet_(.*)/, async (ctx) => {
     }
   );
 });
-bot.command("wal",async(ctx)=>{
-  console.log("wallets",ctx.session.wallets);
-})
+bot.command("wal", async (ctx) => {
+  console.log("wallets", ctx.session.wallets);
+});
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, async (ctx) => {
   const walletAddress = ctx.match[1]; // Extract wallet address from callback data
@@ -407,15 +411,20 @@ bot.on("left_chat_member", async (ctx) => {
 
 bot.action(/^SELECT_GROUP_/, handleGroupSelection);
 
-
 bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
+  if (prevMessageState.prevMessage) {
+    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
+  }
+  await ctx.reply("You selected add raffle");
   const groupId = ctx.match[1];
 
   try {
     await handleGroupIdInput(ctx, groupId);
   } catch (error) {
     console.error("Error handling ADD_RAFFLE action:", error);
-    ctx.reply("An error occurred while trying to add a new raffle. Please try again.");
+    ctx.reply(
+      "An error occurred while trying to add a new raffle. Please try again."
+    );
   }
 });
 
@@ -449,13 +458,15 @@ bot.on("text", (ctx) => {
 });
 
 // handle split percentage for raffle
-bot.action("SPLIT_YES", (ctx) => {
+bot.action("SPLIT_YES", async (ctx) => {
   if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
+  await ctx.reply("You selected yes option for split of raffle pool");
   handleSplitPool(ctx);
 });
 
-bot.action("SPLIT_NO", (ctx) => {
+bot.action("SPLIT_NO", async (ctx) => {
   if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
+  await ctx.reply("You selected no option for split of raffle pool");
   handleNoSplitPool(ctx);
 });
 
@@ -508,9 +519,6 @@ if (process.env.NODE_ENV === "development") {
   app.use(express.json());
   app.use(bot.webhookCallback("/secret-path"));
   bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
-  // bot.telegram.setWebhook(
-  //   `https://8bad-103-215-237-202.ngrok-free.app/secret-path`
-  // );
 
   app.get("/", (req, res) => {
     res.send("Server is running");
