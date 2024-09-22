@@ -15,7 +15,7 @@ type Chains = {
 export const CHAIN: Chains = {
   sepolia: {
     rpcUrl:
-      `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_RPC_API_KEY}`,
+      "https://eth-sepolia.g.alchemy.com/v2/WRfmzLBj8D-0bD76QLpD7DjZu5rUIAtE",
   },
   "mumbai-testnet": {
     rpcUrl:
