@@ -100,11 +100,7 @@ export const createRaffle = async (ctx, privateKey) => {
     await ctx.reply("Raffle is created successfully ✨");
 
     // Send a message to the group using the Telegram API
-    let botIDAndToken;
-    if (process.env.LOCAL_TELEGRAM_BOT_TOKEN) {
-       botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
-    }
-    botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
+    const botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
     const message = "Raffle is created successfully ✨";
 
     if (createdGroup) {
