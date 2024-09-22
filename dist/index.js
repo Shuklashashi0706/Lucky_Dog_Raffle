@@ -30,11 +30,7 @@ const bot_utils_2 = require("./utils/bot-utils");
 const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
 const message_utils_1 = require("./utils/message-utils");
-const handle_lucky_command_1 = require("./scenes/handle-lucky-command");
-const createRaffle_1 = require("./utils/createRaffle");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
-const handle_lucky_command_2 = require("./scenes/handle-lucky-command");
-const buyTickets_1 = require("./utils/buyTickets");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -42,7 +38,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-    bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+    bot = new telegraf_1.Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
 }
 else {
     bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
@@ -51,7 +47,6 @@ const stage = new telegraf_1.Scenes.Stage([
     importWalletScene_2.importWalletStep,
     chooseWalletNameScene_1.chooseWalletNameStep,
     generateWalletSeedScene_2.generateWalletSeedStep,
-    handle_lucky_command_2.luckyScene,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -108,7 +103,8 @@ bot.action("CREATE_UPDATE_RAFFLE", (ctx) => __awaiter(void 0, void 0, void 0, fu
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
     }
-    yield ctx.reply("Create Raffle option selected");
+    ctx.reply("You selected create/udpate raffle option");
+    // Add logic here to create or update a raffle
     yield (0, add_raffle_actions_1.handleAddRaffle)(ctx); // Assuming handleAddRaffle is the function to start the raffle creation/update process
 }));
 // Additional handlers go here...
@@ -143,9 +139,6 @@ bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
     }
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
-}));
-bot.command("lucky", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    ctx.scene.enter("LUCKY_SCENE");
 }));
 bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -240,16 +233,11 @@ bot.action("proceed_without_referral", (ctx) => __awaiter(void 0, void 0, void 0
 // -------------- create raffle start ------------
 // Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-<<<<<<< HEAD
-    const walletAddress = ctx.match[1];
-    yield ctx.reply(`Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`, {
-=======
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
     }
     const walletAddress = ctx.match[1]; // Extract wallet address from callback data
     state_1.prevMessageState.prevMessage = yield ctx.reply(`Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`, {
->>>>>>> d51c54b4f755da1952b558b73f3150d9b5335b2a
         reply_markup: {
             inline_keyboard: [
                 [
@@ -266,21 +254,6 @@ bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* 
         },
     });
 }));
-<<<<<<< HEAD
-bot.action(/^wallet1_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    (0, buyTickets_1.handlePaymentConfirmation)();
-}));
-bot.action(/buy_ticket_(\d+)_(\w+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    (0, handle_lucky_command_1.handleBuyTicketAction)(ctx);
-}));
-bot.command("test", (ctx) => {
-    ctx.session.waitingForTickets = true;
-});
-bot.command("testp", (ctx) => {
-    console.log(ctx.session.waitingForTickets);
-});
-=======
->>>>>>> d51c54b4f755da1952b558b73f3150d9b5335b2a
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -386,7 +359,7 @@ bot.action(/^ADD_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, functi
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
     }
-    yield ctx.reply("Add Raffle option selected");
+    yield ctx.reply("You selected add raffle");
     const groupId = ctx.match[1];
     try {
         yield (0, add_raffle_actions_1.handleGroupIdInput)(ctx, groupId);
@@ -430,16 +403,18 @@ bot.on("text", (ctx) => {
     (0, add_raffle_actions_1.handleTextInputs)(ctx);
 });
 // handle split percentage for raffle
-bot.action("SPLIT_YES", (ctx) => {
+bot.action("SPLIT_YES", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage)
         (0, message_utils_1.deletePreviousMessage)(ctx);
+    yield ctx.reply("You selected yes option for split of raffle pool");
     (0, add_raffle_actions_1.handleSplitPool)(ctx);
-});
-bot.action("SPLIT_NO", (ctx) => {
+}));
+bot.action("SPLIT_NO", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage)
         (0, message_utils_1.deletePreviousMessage)(ctx);
+    yield ctx.reply("You selected no option for split of raffle pool");
     (0, add_raffle_actions_1.handleNoSplitPool)(ctx);
-});
+}));
 // handle the raffle start time
 bot.action("START_NOW", (ctx) => {
     if (state_1.prevMessageState.prevMessage)

@@ -2,7 +2,7 @@ import { Context, Markup } from "telegraf";
 import Raffle from "../models/raffle";
 import { formatDate } from "../utils/fortmat-date";
 import { z } from "zod";
-import { userStateSchema } from "../types/ask-raffle";
+import { userStateSchema, userStateFinalSchema } from "../types/ask-raffle";
 import { transact } from "../utils/mm-sdk";
 import Group from "../models/group";
 import { prevMessageState } from "../utils/state";
@@ -25,8 +25,74 @@ const formatMessage = (message) => {
 
 // Validate user state against schema
 export const validateUserState = (state) => {
-  return userStateSchema.safeParse(state);
+  return userStateFinalSchema.safeParse(state);
 };
+
+//function for converting "Xd Yh into utc time"
+async function convertIntoTime(endTimeInput) {
+  const regex = /(\d+)d\s*(\d+)h/;
+  const match = endTimeInput.match(regex);
+  if (match) {
+    const days = parseInt(match[1], 10); // Get days from the input
+    const hours = parseInt(match[2], 10); // Get hours from the input
+
+    // Add days and hours to the current date and time
+    const currentDate = new Date();
+    currentDate.setDate(currentDate.getDate() + days); // Add days
+    currentDate.setHours(currentDate.getHours() + hours); // Add hours
+
+    // Convert the updated date to a Unix timestamp (seconds since epoch)
+    const raffleEndTime = Math.floor(currentDate.getTime() / 1000); // Convert to Unix timestamp
+
+    return raffleEndTime;
+  } else {
+    await ctx.reply(
+      formatMessage(
+        `Error: Invalid format. Please enter a valid date and time in the format Xd Yh.`
+      )
+    );
+    return;
+  }
+}
+
+function convertUnixToFormattedTime(unixTimestamp) {
+  // Create a new Date object with the Unix timestamp (multiplied by 1000 to convert to milliseconds)
+  const date = new Date(unixTimestamp * 1000);
+
+  // Define an array of month names
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  // Get day, month, year, hour, and minute
+  const day = date.getUTCDate();
+  const month = months[date.getUTCMonth()];
+  const year = date.getUTCFullYear();
+  let hour = date.getUTCHours();
+  const minute = date.getUTCMinutes();
+
+  // Determine AM/PM and format hour
+  const ampm = hour >= 12 ? "pm" : "am";
+  hour = hour % 12;
+  hour = hour ? hour : 12; // the hour '0' should be '12'
+
+  // Format minute to always have two digits
+  const formattedMinute = minute < 10 ? "0" + minute : minute;
+
+  // Construct and return the formatted string
+  return `${day} ${month} ${year} ${hour}:${formattedMinute} ${ampm} UTC`;
+}
 
 // Validate a specific field in the user state
 const validateField = (field, value) => {
@@ -123,7 +189,9 @@ export const handleGroupSelection = async (ctx) => {
 
           state.createdGroup = groupId;
           state.stage = "GROUP_ACTION_SELECTION";
-          await ctx.reply(`You selected ${selectedGroup.groupUsername} for create/update raffle`);
+          await ctx.reply(
+            `You selected ${selectedGroup.groupUsername} for create/update raffle`
+          );
           prevMessageState.prevMessage = await ctx.reply(
             `What are you wanting to do for ${selectedGroup.groupUsername} group/channel today:`,
             Markup.inlineKeyboard([
@@ -206,9 +274,10 @@ export const handleStartRaffleNow = async (ctx) => {
   if (chatId) {
     const state = userState[chatId];
     if (state) {
-      state.startTime = "0d 0h";
+      const startTime = "0d 0h";
+      state.startTime = await convertIntoTime(startTime);
       state.startTimeOption = "NOW";
-      ctx.reply(
+      await ctx.reply(
         formatMessage("Your raffle will start as soon as it is created.")
       );
       state.stage = "ASK_RAFFLE_LIMIT";
@@ -298,11 +367,14 @@ export const handleConfirmDetails = async (ctx, wallets) => {
     ]);
 
     // Send message with inline keyboard
-    prevMessageState.prevMessage = await ctx.reply("Please confirm your payment method", {
-      reply_markup: {
-        inline_keyboard: walletButtons, // This will now be an array of arrays (rows)
-      },
-    });
+    prevMessageState.prevMessage = await ctx.reply(
+      "Please confirm your payment method",
+      {
+        reply_markup: {
+          inline_keyboard: walletButtons, // This will now be an array of arrays (rows)
+        },
+      }
+    );
   } else {
     // No wallets available, offer to create or import a wallet
     const createWallet = {
@@ -319,11 +391,14 @@ export const handleConfirmDetails = async (ctx, wallets) => {
       callback_data: "metamask",
     };
 
-    prevMessageState.prevMessage = await ctx.reply("How would you like to complete the transaction?", {
-      reply_markup: {
-        inline_keyboard: [[createWallet], [importWallet], [metamaskApp]], // Ensuring all buttons are wrapped in arrays (rows)
-      },
-    });
+    prevMessageState.prevMessage = await ctx.reply(
+      "How would you like to complete the transaction?",
+      {
+        reply_markup: {
+          inline_keyboard: [[createWallet], [importWallet], [metamaskApp]], // Ensuring all buttons are wrapped in arrays (rows)
+        },
+      }
+    );
 
     // Set session flag indicating need to confirm payment method after wallet operation
     ctx.session.needsPaymentConfirmation = true;
@@ -503,10 +578,12 @@ export const handleGroupIdInput = async (ctx, groupId) => {
       );
       return;
     }
-
-    state.createdGroup = groupId;
+    
+    state.groupId = groupId;
+    state.userId = ctx?.from?.id;
+    state.botId = ctx?.botInfo?.id;
     state.stage = "ASK_RAFFLE_TITLE";
-    userState[chatId] = state; 
+    userState[chatId] = state;
 
     await ctx.reply(formatMessage("Enter the Raffle Title:"));
   } catch (error) {
@@ -647,7 +724,8 @@ export const handleTextInputs = async (ctx) => {
             );
             return;
           }
-          state.startTime = ctx.message.text;
+          const startTime = ctx.message.text;
+          state.startTime = await convertIntoTime(startTime);
           state.stage = "ASK_RAFFLE_LIMIT";
           prevMessageState.prevMessage = await ctx.reply(
             formatMessage("Set raffle limit:"),
@@ -675,6 +753,7 @@ export const handleTextInputs = async (ctx) => {
           break;
 
         case "ASK_RAFFLE_END_TIME":
+          // Validate the end time input
           const endTimeError = validateField("raffleEndTime", ctx.message.text);
           if (endTimeError) {
             await ctx.reply(
@@ -684,7 +763,14 @@ export const handleTextInputs = async (ctx) => {
             );
             return;
           }
-          state.raffleEndTime = ctx.message.text;
+
+          // Parse the input "Xd Yh" format to get days and hours
+          const endTimeInput = ctx.message.text;
+
+
+          state.raffleEndTime = await convertIntoTime(endTimeInput);
+
+          // Move to the next stage and ask for raffle purpose or description
           state.stage = "ASK_RAFFLE_PURPOSE";
           await ctx.reply(formatMessage("Add raffle purpose or description:"));
           break;
@@ -700,7 +786,7 @@ export const handleTextInputs = async (ctx) => {
             return;
           }
           state.rafflePurpose = ctx.message.text;
-          const validationResult = validateUserState(state);
+          const validationResult = validateUserState(state);          
           if (!validationResult.success) {
             await ctx.reply(
               formatMessage(
@@ -722,13 +808,13 @@ Split Percentage for Owner: ${state.splitPercentage}%
 Wallet Address: ${state.ownerWalletAddress}`
     : `Split Raffle Pool: No`
 }
-Raffle Start Time: ${state.startTime}
+Raffle Start Time: ${convertUnixToFormattedTime(state.startTime)}
 ${
   state.raffleLimitOption === "VALUE_BASED"
     ? `Raffle Limit Option: Value Based
 Raffle Limit Value: ${state.raffleEndValue} Tickets`
     : `Raffle Limit Option: Time Based
-Raffle End Time: ${state.raffleEndTime}`
+Raffle End Time: ${convertUnixToFormattedTime(state.raffleEndTime)}`
 }
 Raffle Description/Purpose: ${state.rafflePurpose}`);
 
@@ -755,4 +841,3 @@ Raffle Description/Purpose: ${state.rafflePurpose}`);
     }
   }
 };
-
