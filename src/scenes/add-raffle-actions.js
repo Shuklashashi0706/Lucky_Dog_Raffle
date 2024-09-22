@@ -12,8 +12,6 @@ import { createRaffle } from "../utils/createRaffle";
 import Referral from "../models/referal";
 import { getWalletByAddress } from "../utils/bot-utils";
 import { decrypt } from "../utils/encryption-utils";
-import { buyTickets } from "../utils/buyTickets";
-import { luckySceneState } from "./handle-lucky-command";
 const userState = {};
 
 // Function to format a message with borders
@@ -543,20 +541,6 @@ export const handleTextInputs = async (ctx) => {
     return; // Early return to avoid further processing
   }
 
-  
-  if(luckySceneState[ctx.from.id].waitingForTickets){
-    const input = ctx.message.text;
-    const ticketCount = parseInt(input);
-    luckySceneState[ctx.from.id].ticketCount = ticketCount;
-    if (isNaN(ticketCount) || ticketCount <= 0) {
-      return ctx.reply("Please enter a valid number of tickets.");
-    }
-    luckySceneState[ctx.from.id].waitingForTickets = false;
-    buyTickets(ctx);
-
-
-
-  }
   if (chatId) {
     const state = userState[chatId];
     if (state) {
