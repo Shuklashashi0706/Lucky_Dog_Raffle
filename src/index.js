@@ -29,15 +29,7 @@ import { btnDeleteWalletAction } from "./utils/bot-utils";
 import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
 import { deletePreviousMessage } from "./utils/message-utils";
-import {
-  handleBuyTicket,
-  handleBuyTicketAction,
-  handleLuckyCommand,
-} from "./scenes/handle-lucky-command";
-import { createRaffle } from "./utils/createRaffle";
 import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
-import { luckyScene } from "./scenes/handle-lucky-command";
-import { handlePaymentConfirmation } from "./utils/buyTickets";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -47,7 +39,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 
 let bot;
 if (process.env.NODE_ENV === "development") {
-  bot = new Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+  bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
 } else {
   bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 }
@@ -163,9 +155,6 @@ bot.action("wallets", async (ctx) => {
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
-bot.command("lucky", async (ctx) => {
-  ctx.scene.enter("LUCKY_SCENE");
-});
 
 bot.action("metamask", async (ctx) => {
   if (prevMessageState.prevMessage) {
@@ -297,13 +286,6 @@ bot.action(/^wallet_(.*)/, async (ctx) => {
       },
     }
   );
-});
-bot.action(/^wallet1_(.*)/, async (ctx) => {
-  handlePaymentConfirmation();
-});
-
-bot.action(/buy_ticket_(\d+)_(\w+)/, async (ctx) => {
-  handleBuyTicketAction(ctx);
 });
 
 // Handle "Yes, I have a referral code"

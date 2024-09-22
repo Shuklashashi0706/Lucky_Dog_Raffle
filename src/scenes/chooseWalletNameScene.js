@@ -14,7 +14,6 @@ chooseWalletNameStep.enter(
 );
 
 chooseWalletNameStep.on("text", async (ctx) => {
-  // Mark the function as async
   const walletName = ctx.message.text;
 
   if (walletName.length > 8) {
@@ -29,7 +28,6 @@ chooseWalletNameStep.on("text", async (ctx) => {
       newWallet.name = walletName;
       ctx.session.wallets = [...(ctx.session.wallets ?? []), newWallet];
 
-      // Send the wallet creation confirmation message
       await ctx.replyWithHTML(
         `✅ New wallet <b>${walletName}</b> was successfully imported & encrypted\n\nAddress:\n${makeItClickable(
           newWallet.address
