@@ -6,23 +6,12 @@ import connectDB from "./utils/connect-db";
 import Group from "./models/group";
 import Raffle from "./models/raffle";
 import {
-  handleAddRaffle,
-  handleCancel,
-  handleConfirmDetails,
-  handleNoSplitPool,
-  handleSelectTime,
-  handleSplitPool,
-  handleStartRaffleNow,
-  handleTextInputs,
-  handleTimeBasedLimit,
-  handleValueBasedLimit,
+  raffleScene,
   handleGroupSelection,
-  handleCreateRaffleWithReferral,
+  addRaffleScenes,
+  handleAddRaffle,
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
-  handleCreateRaffleWithoutReferral,
-  handleGroupIdInput,
-  handleGroupIdInput,
 } from "./scenes/add-raffle-actions";
 import {
   handleReferralCode,
@@ -68,6 +57,7 @@ const stage = new Scenes.Stage([
   chooseWalletNameStep,
   generateWalletSeedStep,
   luckyScene,
+  ...addRaffleScenes,
 ]);
 
 bot.use(session());
@@ -119,34 +109,28 @@ bot.start(async (ctx) => {
       ],
     ]);
 
-    prevMessageState.prevMessage = await ctx.reply(
+    await ctx.reply(
       "Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today?",
       keyboard
     );
   } catch (error) {
-    // Handle errors that occur when sending messages
     console.error("Error while sending message:", error);
   }
 });
 
 // Handle the "Create/Update a raffle" button action
 bot.action("CREATE_UPDATE_RAFFLE", async (ctx) => {
-  if (prevMessageState.prevMessage) {
-    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
-  }
+  await ctx.deleteMessage();
   await ctx.reply("Create Raffle option selected");
-  await handleAddRaffle(ctx); // Assuming handleAddRaffle is the function to start the raffle creation/update process
+  await handleAddRaffle(ctx);
 });
-
-// Additional handlers go here...
 
 // General middleware to handle all types of actions
 bot.use(async (ctx, next) => {
   const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
   if (isBlocked) {
-    return; // Stop further processing for blocked users
+    return;
   }
-  // Continue with the next middleware or handler
   await next();
 });
 
@@ -192,20 +176,14 @@ bot.action("metamask", async (ctx) => {
 
 // create wallet buttons
 bot.action("import-existing-wallet", async (ctx) => {
-  if (prevMessageState.prevMessage) {
-    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
-  }
+  await ctx.deleteMessage();
   ctx.scene.enter(importWalletScene);
 });
 
 bot.action("generate-wallet-seed", async (ctx) => {
-  if (prevMessageState.prevMessage) {
-    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
-  }
+  await ctx.deleteMessage();
   ctx.scene.enter(generateWalletSeedScene);
 });
-
-// delete buttons
 
 bot.action("btn-delete-wallet", async (ctx) => {
   if (prevMessageState.prevMessage) {
@@ -244,7 +222,6 @@ bot.action("confirm-delete-wallet", async (ctx) => {
 
 // ----------------- referal code start -----------
 bot.command("referral_code", async (ctx) => {
- 
   await handleReferralCode(ctx);
 });
 
@@ -271,7 +248,6 @@ bot.action("select_wallet_address", async (ctx) => {
 
 // Bot action to handle wallet selection from the inline keyboard
 bot.action(/^select_wallet_/, async (ctx) => {
-  
   const walletAddress = ctx.match.input.split("select_wallet_")[1]; // Extract wallet address from callback data
 
   if (!walletAddress) {
@@ -284,13 +260,13 @@ bot.action(/^select_wallet_/, async (ctx) => {
 
 // Handle "Enter again" option
 bot.action("enter_referral_again", async (ctx) => {
-  await handleCreateRaffleWithReferral(ctx); // Restart the referral input flow
+  await handleCreateRaffleWithReferral(ctx);
 });
 
 // Handle "Proceed without referral" option
 bot.action("proceed_without_referral", async (ctx) => {
   const walletAddress = ctx.session.walletAddress;
-  await handleCreateRaffleWithoutReferral(ctx, walletAddress); // Proceed without referral
+  await handleCreateRaffleWithoutReferral(ctx, walletAddress);
 });
 
 // ----------------- referal code end -----------
@@ -298,12 +274,8 @@ bot.action("proceed_without_referral", async (ctx) => {
 // -------------- create raffle start ------------
 // Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, async (ctx) => {
-  if (prevMessageState.prevMessage) {
-    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
-  }
-
-  const walletAddress = ctx.match[1]; // Extract wallet address from callback data
-
+  await ctx.deleteMessage();
+  const walletAddress = ctx.match[1];
   prevMessageState.prevMessage = await ctx.reply(
     `Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`,
     {
@@ -314,6 +286,8 @@ bot.action(/^wallet_(.*)/, async (ctx) => {
               text: "Yes, I have a referral code",
               callback_data: `has_referral_${walletAddress}`,
             },
+          ],
+          [
             {
               text: "No, continue without referral",
               callback_data: `no_referral_${walletAddress}`,
@@ -331,7 +305,6 @@ bot.action(/^wallet1_(.*)/, async (ctx) => {
 bot.action(/buy_ticket_(\d+)_(\w+)/, async (ctx) => {
   handleBuyTicketAction(ctx);
 });
-
 
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, async (ctx) => {
@@ -463,29 +436,15 @@ bot.on("left_chat_member", async (ctx) => {
 bot.action(/^SELECT_GROUP_/, handleGroupSelection);
 
 bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
-  if (prevMessageState.prevMessage) {
-    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
-  }
+  await ctx.deleteMessage();
   await ctx.reply("Add Raffle option selected");
   const groupId = ctx.match[1];
-  try {
-    await handleGroupIdInput(ctx, groupId);
-  } catch (error) {
-    console.error("Error handling ADD_RAFFLE action:", error);
-    ctx.reply(
-      "An error occurred while trying to add a new raffle. Please try again."
-    );
-  }
+  ctx.session.groupId = groupId;
+  ctx.scene.enter("raffleScene");
 });
 
 bot.action(/^UPDATE_RAFFLE_(.*)/, async (ctx) => {
-  if (prevMessageState.prevMessage) {
-    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
-  }
-  await ctx.reply("Update Raffle option selected");
-  const groupId = ctx.match[1];
-  // Handle the logic for updating a running raffle
-  await ctx.reply(`Updating a running raffle for group ID: ${groupId}`);
+  await ctx.deleteMessage();
 });
 
 bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
@@ -495,67 +454,6 @@ bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
   const groupId = ctx.match[1];
   // Handle the logic for viewing raffle details
   await ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
-});
-
-// // Callback action handler for "ADD_RAFFLE"
-// bot.action("ADD_RAFFLE", async (ctx) => {
-//   try {
-//     if (prevMessageState.prevMessage) {
-//       deletePreviousMessage(ctx);
-//     }
-//     await handleAddRaffle(ctx);
-//   } catch (error) {
-//     ctx.reply("Failed to add raffle. Please try again.");
-//   }
-// });
-
-bot.on("text", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleTextInputs(ctx);
-});
-
-// handle split percentage for raffle
-bot.action("SPLIT_YES", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleSplitPool(ctx);
-});
-
-bot.action("SPLIT_NO", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleNoSplitPool(ctx);
-});
-
-// handle the raffle start time
-bot.action("START_NOW", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleStartRaffleNow(ctx);
-});
-
-bot.action("SELECT_TIME", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleSelectTime(ctx);
-});
-
-// handle raffle limit
-bot.action("TIME_BASED", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleTimeBasedLimit(ctx);
-});
-
-bot.action("VALUE_BASED", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleValueBasedLimit(ctx);
-});
-
-// confirm details
-bot.action("CONFIRM_DETAILS", async (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleConfirmDetails(ctx, ctx.session.wallets);
-});
-
-bot.action("CANCEL_ADD_RAFL", (ctx) => {
-  if (prevMessageState.prevMessage) deletePreviousMessage(ctx);
-  handleCancel(ctx);
 });
 
 // Connect to the database

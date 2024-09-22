@@ -52,6 +52,7 @@ const stage = new telegraf_1.Scenes.Stage([
     chooseWalletNameScene_1.chooseWalletNameStep,
     generateWalletSeedScene_2.generateWalletSeedStep,
     handle_lucky_command_2.luckyScene,
+    ...add_raffle_actions_1.addRaffleScenes,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -96,29 +97,24 @@ bot.start((ctx) => __awaiter(void 0, void 0, void 0, function* () {
                 telegraf_1.Markup.button.callback("Create/Update a raffle", "CREATE_UPDATE_RAFFLE"),
             ],
         ]);
-        state_1.prevMessageState.prevMessage = yield ctx.reply("Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today?", keyboard);
+        yield ctx.reply("Welcome to Lucky Dog Raffle Bot! Telegram's Original Buy Bot! What would you like to do today?", keyboard);
     }
     catch (error) {
-        // Handle errors that occur when sending messages
         console.error("Error while sending message:", error);
     }
 }));
 // Handle the "Create/Update a raffle" button action
 bot.action("CREATE_UPDATE_RAFFLE", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    if (state_1.prevMessageState.prevMessage) {
-        yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
-    }
+    yield ctx.deleteMessage();
     yield ctx.reply("Create Raffle option selected");
-    yield (0, add_raffle_actions_1.handleAddRaffle)(ctx); // Assuming handleAddRaffle is the function to start the raffle creation/update process
+    yield (0, add_raffle_actions_1.handleAddRaffle)(ctx);
 }));
-// Additional handlers go here...
 // General middleware to handle all types of actions
 bot.use((ctx, next) => __awaiter(void 0, void 0, void 0, function* () {
     const isBlocked = yield checkBlockedUser(ctx, ctx.from.id);
     if (isBlocked) {
-        return; // Stop further processing for blocked users
+        return;
     }
-    // Continue with the next middleware or handler
     yield next();
 }));
 // -----------------------  wallet setup start -----------------------------
@@ -155,18 +151,13 @@ bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
 }));
 // create wallet buttons
 bot.action("import-existing-wallet", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    if (state_1.prevMessageState.prevMessage) {
-        yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
-    }
+    yield ctx.deleteMessage();
     ctx.scene.enter(importWalletScene_1.importWalletScene);
 }));
 bot.action("generate-wallet-seed", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    if (state_1.prevMessageState.prevMessage) {
-        yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
-    }
+    yield ctx.deleteMessage();
     ctx.scene.enter(generateWalletSeedScene_1.generateWalletSeedScene);
 }));
-// delete buttons
 bot.action("btn-delete-wallet", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
@@ -229,27 +220,20 @@ bot.action(/^select_wallet_/, (ctx) => __awaiter(void 0, void 0, void 0, functio
 }));
 // Handle "Enter again" option
 bot.action("enter_referral_again", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    yield (0, add_raffle_actions_1.handleCreateRaffleWithReferral)(ctx); // Restart the referral input flow
+    yield (0, add_raffle_actions_1.handleCreateRaffleWithReferral)(ctx);
 }));
 // Handle "Proceed without referral" option
 bot.action("proceed_without_referral", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const walletAddress = ctx.session.walletAddress;
-    yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress); // Proceed without referral
+    yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress);
 }));
 // ----------------- referal code end -----------
 // -------------- create raffle start ------------
 // Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-<<<<<<< HEAD
+    yield ctx.deleteMessage();
     const walletAddress = ctx.match[1];
-    yield ctx.reply(`Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`, {
-=======
-    if (state_1.prevMessageState.prevMessage) {
-        yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
-    }
-    const walletAddress = ctx.match[1]; // Extract wallet address from callback data
     state_1.prevMessageState.prevMessage = yield ctx.reply(`Do you have any referral code?\nCreate with referral code, 2% service fee for bot and 0.5% referral fee for referrer.\nCreate without referral code, 3% service fee for bot.`, {
->>>>>>> d51c54b4f755da1952b558b73f3150d9b5335b2a
         reply_markup: {
             inline_keyboard: [
                 [
@@ -257,6 +241,8 @@ bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* 
                         text: "Yes, I have a referral code",
                         callback_data: `has_referral_${walletAddress}`,
                     },
+                ],
+                [
                     {
                         text: "No, continue without referral",
                         callback_data: `no_referral_${walletAddress}`,
@@ -266,21 +252,12 @@ bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* 
         },
     });
 }));
-<<<<<<< HEAD
 bot.action(/^wallet1_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     (0, buyTickets_1.handlePaymentConfirmation)();
 }));
 bot.action(/buy_ticket_(\d+)_(\w+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     (0, handle_lucky_command_1.handleBuyTicketAction)(ctx);
 }));
-bot.command("test", (ctx) => {
-    ctx.session.waitingForTickets = true;
-});
-bot.command("testp", (ctx) => {
-    console.log(ctx.session.waitingForTickets);
-});
-=======
->>>>>>> d51c54b4f755da1952b558b73f3150d9b5335b2a
 // Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -383,18 +360,11 @@ bot.on("left_chat_member", (ctx) => __awaiter(void 0, void 0, void 0, function* 
 }));
 bot.action(/^SELECT_GROUP_/, add_raffle_actions_1.handleGroupSelection);
 bot.action(/^ADD_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    if (state_1.prevMessageState.prevMessage) {
-        yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
-    }
+    yield ctx.deleteMessage();
     yield ctx.reply("Add Raffle option selected");
     const groupId = ctx.match[1];
-    try {
-        yield (0, add_raffle_actions_1.handleGroupIdInput)(ctx, groupId);
-    }
-    catch (error) {
-        console.error("Error handling ADD_RAFFLE action:", error);
-        ctx.reply("An error occurred while trying to add a new raffle. Please try again.");
-    }
+    ctx.session.groupId = groupId;
+    ctx.scene.enter("raffleScene");
 }));
 bot.action(/^UPDATE_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -413,66 +383,6 @@ bot.action(/^VIEW_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, funct
     // Handle the logic for viewing raffle details
     yield ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
 }));
-// // Callback action handler for "ADD_RAFFLE"
-// bot.action("ADD_RAFFLE", async (ctx) => {
-//   try {
-//     if (prevMessageState.prevMessage) {
-//       deletePreviousMessage(ctx);
-//     }
-//     await handleAddRaffle(ctx);
-//   } catch (error) {
-//     ctx.reply("Failed to add raffle. Please try again.");
-//   }
-// });
-bot.on("text", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleTextInputs)(ctx);
-});
-// handle split percentage for raffle
-bot.action("SPLIT_YES", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleSplitPool)(ctx);
-});
-bot.action("SPLIT_NO", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleNoSplitPool)(ctx);
-});
-// handle the raffle start time
-bot.action("START_NOW", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleStartRaffleNow)(ctx);
-});
-bot.action("SELECT_TIME", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleSelectTime)(ctx);
-});
-// handle raffle limit
-bot.action("TIME_BASED", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleTimeBasedLimit)(ctx);
-});
-bot.action("VALUE_BASED", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleValueBasedLimit)(ctx);
-});
-// confirm details
-bot.action("CONFIRM_DETAILS", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleConfirmDetails)(ctx, ctx.session.wallets);
-}));
-bot.action("CANCEL_ADD_RAFL", (ctx) => {
-    if (state_1.prevMessageState.prevMessage)
-        (0, message_utils_1.deletePreviousMessage)(ctx);
-    (0, add_raffle_actions_1.handleCancel)(ctx);
-});
 // Connect to the database
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {

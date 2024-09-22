@@ -11,7 +11,7 @@ const walletAddressSchema = z
 export const generateUniqueReferralCode = async () => {
   const prefix = "LDGREF";
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let suffix = 1; // Start from 1 and increment
+  let suffix = 1; 
 
   while (true) {
     // Generate a random 2-character string from the alphabet
@@ -208,8 +208,6 @@ export const handleSelectWallet = async (ctx) => {
             ];
           })
         : [];
-
-    // Add a button for adding a new wallet address at the bottom
     const addWalletButton = [
       {
         text: "Add Wallet Address",

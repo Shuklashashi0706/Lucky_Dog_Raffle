@@ -3,7 +3,10 @@ import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import Raffle from "../models/raffle"; // Import your Raffle model
 import axios from "axios";
 import Raffle from "../models/raffle";
+
 export const createRaffle = async (ctx, privateKey) => {
+  console.log(ctx.session.raffleTitle);
+  console.log(ctx.session.ticketPrice);
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
   );
@@ -18,7 +21,7 @@ export const createRaffle = async (ctx, privateKey) => {
 
   const {
     rafflePrice = ethers.utils.parseEther("0.01"),
-    startTime = Math.floor(Date.now() / 1000) + 3600, 
+    startTime = Math.floor(Date.now() / 1000) + 3600,
     raffleEndValue = Math.floor(Date.now() / 1000) + 86400, // Default end time (24 hours from now)
     splitPool,
     maxBuyPerWallet = 10,
@@ -46,7 +49,7 @@ export const createRaffle = async (ctx, privateKey) => {
     return;
   }
 
-  const _tgOwnerPercentage = splitPool === "YES" ? 500 : 0; 
+  const _tgOwnerPercentage = splitPool === "YES" ? 500 : 0;
   const _entryCost = rafflePrice;
   const _raffleStartTime = startTime;
 
@@ -102,7 +105,7 @@ export const createRaffle = async (ctx, privateKey) => {
     // Send a message to the group using the Telegram API
     let botIDAndToken;
     if (process.env.LOCAL_TELEGRAM_BOT_TOKEN) {
-       botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
+      botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
     }
     botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
     const message = "Raffle is created successfully ✨";

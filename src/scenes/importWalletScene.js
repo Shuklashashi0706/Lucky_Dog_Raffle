@@ -25,7 +25,7 @@ importWalletStep.on("text", (ctx) => {
     ctx.reply(
       "😔 This does not appear to be a valid private key / mnemonic phrase. Please try again."
     );
-    ctx.scene.reenter(); // Re-enter the scene to allow user to try again
+    ctx.scene.reenter(); 
   }
 });
 

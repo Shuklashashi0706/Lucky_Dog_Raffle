@@ -54,7 +54,7 @@ export const buyTickets = async (ctx) => {
     });
 
     ctx.session.buyTicketsPayments = true;
-   buyTickets(ctx)
+  //  buyTickets(ctx)
   }
 };
 

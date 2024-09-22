@@ -8,18 +8,18 @@ import {
   chooseWalletNameStep,
 } from "./chooseWalletNameScene";
 
-import {
-  handleAddRaffle,
-  handleSplitPool,
-  handleNoSplitPool,
-  handleStartRaffleNow,
-  handleSelectTime,
-  handleTimeBasedLimit,
-  handleValueBasedLimit,
-  handleConfirmDetails,
-  handleCancel,
-  handleTextInputs,
-} from "./add-raffle-actions";
+// import {
+//   handleAddRaffle,
+//   handleSplitPool,
+//   handleNoSplitPool,
+//   handleStartRaffleNow,
+//   handleSelectTime,
+//   handleTimeBasedLimit,
+//   handleValueBasedLimit,
+//   handleConfirmDetails,
+//   handleCancel,
+//   handleTextInputs,
+// } from "./add-raffle-actions";
 
 export default {
   importWalletScene,
@@ -28,14 +28,14 @@ export default {
   generateWalletSeedStep,
   chooseWalletNameScene,
   chooseWalletNameStep,
-  handleAddRaffle,
-  handleSplitPool,
-  handleNoSplitPool,
-  handleStartRaffleNow,
-  handleSelectTime,
-  handleTimeBasedLimit,
-  handleValueBasedLimit,
-  handleConfirmDetails,
-  handleCancel,
-  handleTextInputs,
+  // handleAddRaffle,
+  // handleSplitPool,
+  // handleNoSplitPool,
+  // handleStartRaffleNow,
+  // handleSelectTime,
+  // handleTimeBasedLimit,
+  // handleValueBasedLimit,
+  // handleConfirmDetails,
+  // handleCancel,
+  // handleTextInputs,
 };

@@ -6,11 +6,15 @@ import { handleSelectWallet } from "./referal-code";
 export const chooseWalletNameScene = "chooseWalletNameScene";
 export const chooseWalletNameStep = new Scenes.BaseScene(chooseWalletNameScene);
 
-chooseWalletNameStep.enter(async (ctx) =>
-  await ctx.reply("Choose a name for the newly generated wallet. (Max 8 characters)")
+chooseWalletNameStep.enter(
+  async (ctx) =>
+    await ctx.reply(
+      "Choose a name for the newly generated wallet. (Max 8 characters)"
+    )
 );
 
-chooseWalletNameStep.on("text", async (ctx) => { // Mark the function as async
+chooseWalletNameStep.on("text", async (ctx) => {
+  // Mark the function as async
   const walletName = ctx.message.text;
 
   if (walletName.length > 8) {
@@ -39,10 +43,10 @@ chooseWalletNameStep.on("text", async (ctx) => { // Mark the function as async
         ctx.session.selectWalletReferal = false;
       } else if (ctx.session.needsPaymentConfirmation) {
         await ctx.scene.leave(); // Ensure the scene is left before proceeding
-        await handleConfirmDetails(ctx, ctx.session.wallets); // Handle payment confirmation
+        await ctx.scene.enter("confirmScene"); // Handle payment confirmation
         ctx.session.needsPaymentConfirmation = false;
       } else {
-        await ctx.scene.leave(); // Leave the scene if no other actions are needed
+        await ctx.scene.leave();
       }
     }
   }
