@@ -48,7 +48,7 @@ generateWalletSeedStep.on("text", async (ctx) => {
         ctx.session.selectWalletReferal = false;
       } else if (ctx.session.needsPaymentConfirmation) {
         await ctx.scene.leave(); // Ensure the scene is left before proceeding
-       ctx.scene.enter("confirmScene") // Handle payment confirmation
+        ctx.scene.enter("confirmScene"); // Handle payment confirmation
         ctx.session.needsPaymentConfirmation = false;
       } else {
         await ctx.scene.leave(); // Leave the scene if no other actions are needed

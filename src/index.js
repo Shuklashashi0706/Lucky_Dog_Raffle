@@ -30,6 +30,7 @@ import { btnDeleteWalletAction } from "./utils/bot-utils";
 import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
 import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
+import { updateRaffleScenes } from "./scenes/update-raffle";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -48,6 +49,7 @@ const stage = new Scenes.Stage([
   chooseWalletNameStep,
   generateWalletSeedStep,
   ...addRaffleScenes,
+  ...updateRaffleScenes,
   ...buyRaffleScenes,
 ]);
 
@@ -250,6 +252,7 @@ bot.action("enter_referral_again", async (ctx) => {
 
 bot.action("proceed_without_referral", async (ctx) => {
   const walletAddress = ctx.session.walletAddress;
+  console.log(walletAddress)
   await handleCreateRaffleWithoutReferral(ctx, walletAddress);
 });
 
@@ -420,6 +423,7 @@ bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
 
 bot.action(/^UPDATE_RAFFLE_(.*)/, async (ctx) => {
   await ctx.deleteMessage();
+  ctx.scene.enter("updateRaffleScene");
 });
 
 bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
