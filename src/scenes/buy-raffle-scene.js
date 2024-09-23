@@ -105,10 +105,17 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
       `🎫 You are purchasing tickets from:\n\n🏠 *Group Name:* ${groupName}\n🎉 *Raffle Title:* ${raffleTitle}`,
       { parse_mode: "Markdown" }
     );
-
     await ctx.answerCbQuery(
       `📩 Please check your DMs,${ctx.from.id}, to proceed with your ticket purchase! 🎟️`
     );
+    const sentMessage = await ctx.reply(
+      `📩 Please check your DMs,${ctx.from.id}, to proceed with your ticket purchase! 🎟️`
+    );
+    setTimeout(
+      async () => await ctx.deleteMessage(sentMessage.message_id),
+      10000
+    );
+    ctx.scene.enter("walletScene");
   } catch (error) {
     console.error("Error sending private message:", error);
     await ctx.reply(
@@ -116,3 +123,10 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
     );
   }
 });
+
+export const walletScene = new BaseScene("walletScene");
+
+walletScene.enter(async (ctx) => {
+});
+
+export const buyRaffleScenes = [buyRaffleScene, walletScene];

@@ -13,7 +13,7 @@ import {
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
 } from "./scenes/add-raffle-actions";
-import { buyRaffleScene } from "./scenes/buy-raffle-scene";
+import { buyRaffleScenes } from "./scenes/buy-raffle-scene";
 import {
   handleReferralCode,
   handleCreateNewReferal,
@@ -36,7 +36,6 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
   console.error("Setup your token");
   process.exit(1);
 }
-
 let bot;
 if (process.env.NODE_ENV === "development") {
   bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
@@ -49,7 +48,7 @@ const stage = new Scenes.Stage([
   chooseWalletNameStep,
   generateWalletSeedStep,
   ...addRaffleScenes,
-  buyRaffleScene,
+  ...buyRaffleScenes,
 ]);
 
 bot.use(session());
