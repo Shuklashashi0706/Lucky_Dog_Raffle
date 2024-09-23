@@ -20,6 +20,7 @@ const connect_db_1 = __importDefault(require("./utils/connect-db"));
 const group_1 = __importDefault(require("./models/group"));
 const raffle_1 = __importDefault(require("./models/raffle"));
 const add_raffle_actions_1 = require("./scenes/add-raffle-actions");
+const buy_raffle_scene_1 = require("./scenes/buy-raffle-scene");
 const referal_code_1 = require("./scenes/referal-code");
 const importWalletScene_1 = require("./scenes/importWalletScene");
 const generateWalletSeedScene_1 = require("./scenes/generateWalletSeedScene");
@@ -38,7 +39,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-    bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+    bot = new telegraf_1.Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
 }
 else {
     bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);
@@ -48,7 +49,11 @@ const stage = new telegraf_1.Scenes.Stage([
     chooseWalletNameScene_1.chooseWalletNameStep,
     generateWalletSeedScene_2.generateWalletSeedStep,
     ...add_raffle_actions_1.addRaffleScenes,
+<<<<<<< HEAD
     ...update_raffle_1.updateRaffleScenes,
+=======
+    buy_raffle_scene_1.buyRaffleScene,
+>>>>>>> 9be081bb0dc151cf5a0b3ea16123fb38a1a4d547
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -202,7 +207,6 @@ bot.action("select_wallet_address", (ctx) => __awaiter(void 0, void 0, void 0, f
     }
     yield (0, referal_code_1.handleSelectWallet)(ctx);
 }));
-// Bot action to handle wallet selection from the inline keyboard
 bot.action(/^select_wallet_/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const walletAddress = ctx.match.input.split("select_wallet_")[1]; // Extract wallet address from callback data
     if (!walletAddress) {
@@ -211,11 +215,9 @@ bot.action(/^select_wallet_/, (ctx) => __awaiter(void 0, void 0, void 0, functio
     }
     yield (0, referal_code_1.handleWalletSelection)(ctx, walletAddress);
 }));
-// Handle "Enter again" option
 bot.action("enter_referral_again", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, add_raffle_actions_1.handleCreateRaffleWithReferral)(ctx);
 }));
-// Handle "Proceed without referral" option
 bot.action("proceed_without_referral", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const walletAddress = ctx.session.walletAddress;
     console.log(walletAddress);
@@ -223,7 +225,6 @@ bot.action("proceed_without_referral", (ctx) => __awaiter(void 0, void 0, void 0
 }));
 // ----------------- referal code end -----------
 // -------------- create raffle start ------------
-// Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
     const walletAddress = ctx.match[1];
@@ -246,7 +247,6 @@ bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* 
         },
     });
 }));
-// Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
@@ -254,7 +254,6 @@ bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, func
     const walletAddress = ctx.match[1]; // Extract wallet address from callback data
     yield (0, add_raffle_actions_1.handleCreateRaffleWithReferral)(ctx, walletAddress);
 }));
-// Handle "No, continue without referral"
 bot.action(/^no_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
@@ -263,7 +262,7 @@ bot.action(/^no_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, funct
     yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress);
 }));
 // -------------- create raffle end ------------
-// -----------------------adding bot to group-------------------
+// -----------------------adding bot to group start-------------------
 bot.on("new_chat_members", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)) {
         // Extracting group and bot details from the context
@@ -366,6 +365,12 @@ bot.action(/^VIEW_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, funct
     // Handle the logic for viewing raffle details
     yield ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
 }));
+// -----------------------adding bot to group end-------------------
+// ---------------------------- buy raffle start------------------------------
+bot.command("lucky", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    ctx.scene.enter("buyRaffleScene");
+}));
+// ---------------------------- buy raffle end------------------------------
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {
     bot.launch(() => {

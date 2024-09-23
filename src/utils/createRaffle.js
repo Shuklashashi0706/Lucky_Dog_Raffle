@@ -138,7 +138,7 @@ Good luck to all participants! 🍀
 
           let botIDAndToken;
           if (process.env.NODE_ENV === "development") {
-            botIDAndToken = "7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU";
+            botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
           } else {
             botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
           }
@@ -197,4 +197,3 @@ Good luck to all participants! 🍀
     }
   }
 };
-
