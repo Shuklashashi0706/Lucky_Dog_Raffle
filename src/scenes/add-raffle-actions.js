@@ -326,9 +326,7 @@ export const handleAddRaffle = async (ctx) => {
 
       if (groups.length === 0) {
         await ctx.reply(
-          formatMessage(
-            "No available groups found. Please add bot to group first."
-          ),
+          "No available groups found. Please add bot to group first.",
           Markup.inlineKeyboard([addBotDeepLink], { columns: 1 })
         );
         return;
@@ -350,8 +348,6 @@ export const handleAddRaffle = async (ctx) => {
       ctx.reply("Failed to retrieve groups. Please try again later.");
     }
   } else {
-    ctx.reply(
-      formatMessage("Unable to retrieve chat ID or User ID. Please try again.")
-    );
+    ctx.reply("Unable to retrieve chat ID or User ID. Please try again.");
   }
 };
