@@ -58,13 +58,12 @@ Raffle Start Time    : ${new Date(
         raffleDetails.raffleStartTime * 1000
       ).toUTCString()}
 ${
-  raffleDetails.raffleEndTime !== 0
+  raffleDetails.raffleEndTime.toNumber() !== 0
     ? `Raffle End Time      : ${new Date(
         raffleDetails.raffleEndTime * 1000
       ).toUTCString()}`
     : `Max Tickets          : ${raffleDetails.maxTickets}`
 }
-
 Is Active            : ${raffleDetails.isActive ? "Yes" : "No"}
 TG Owner Percentage  : ${(raffleDetails.tgOwnerPercentage / 100).toFixed(2)}% 
 Max Buy Per Wallet   : ${raffleDetails.maxBuyPerWallet}
