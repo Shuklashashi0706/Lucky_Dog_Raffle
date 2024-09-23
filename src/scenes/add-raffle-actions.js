@@ -1,6 +1,16 @@
 const { Scenes, Markup } = require("telegraf");
 const { BaseScene } = Scenes;
 import Group from "../models/group";
+import {
+  maxTicketsSchema,
+  raffleDescriptionSchema,
+  raffleLimitSchema,
+  raffleTitleSchema,
+  splitPercentSchema,
+  startTimeSchema,
+  ticketPriceSchema,
+  walletAddressSchema,
+} from "../types/input-validation";
 import { getWalletByAddress } from "../utils/bot-utils";
 import { createRaffle } from "../utils/createRaffle";
 import { decrypt } from "../utils/encryption-utils";
@@ -11,7 +21,13 @@ raffleScene.enter(async (ctx) => {
   ctx.reply("Enter raffle title:");
 });
 raffleScene.on("text", (ctx) => {
-  ctx.session.raffleTitle = ctx.message.text;
+  const input = ctx.message.text;
+  const validation = raffleTitleSchema.safeParse(input);
+  if (!validation.success) {
+    return ctx.reply(validation.error.errors[0].message);
+  }
+
+  ctx.session.raffleTitle = input;
   ctx.scene.enter("ticketPriceScene");
 });
 
@@ -20,7 +36,14 @@ ticketPriceScene.enter((ctx) => {
   ctx.reply("Enter ticket price(ETH):");
 });
 ticketPriceScene.on("text", (ctx) => {
-  ctx.session.ticketPrice = ctx.message.text;
+  const input = ctx.message.text;
+
+  const validation = ticketPriceSchema.safeParse(input);
+  if (!validation.success) {
+    return ctx.reply(validation.error.errors[0].message);
+  }
+
+  ctx.session.ticketPrice = input;
   ctx.scene.enter("splitScene");
 });
 
@@ -29,11 +52,12 @@ splitScene.enter((ctx) => {
   previousMessage = ctx.reply(
     "Do you want to have a split of the raffle pool?",
     Markup.inlineKeyboard([
-      Markup.button.callback("Yes", "split_yes"),
-      Markup.button.callback("No", "split_no"),
+      Markup.button.callback("☑️ Yes", "split_yes"),
+      Markup.button.callback("❌ No", "split_no"),
     ])
   );
 });
+
 splitScene.action("split_yes", async (ctx) => {
   await ctx.sendMessage("You selected to split the raffle pool");
   await ctx.deleteMessage(previousMessage.message_id);
@@ -50,14 +74,35 @@ splitScene.action("split_no", async (ctx) => {
 
 const splitDetailsScene = new BaseScene("splitDetailsScene");
 splitDetailsScene.enter((ctx) => {
-  ctx.reply("Enter the split % for owner (integer, less than 25%):");
+  ctx.reply("Enter the split % for owner (integer, less than 39%):");
 });
+
 splitDetailsScene.on("text", (ctx) => {
-  ctx.session.splitPercent = ctx.message.text;
+  const input = ctx.message.text;
+
+  const validation = splitPercentSchema.safeParse(input);
+  if (!validation.success) {
+    return ctx.reply(validation.error.errors[0].message);
+  }
+
+  ctx.session.splitPercent = input;
+  ctx.scene.enter("askSplitWalletScene");
+});
+
+const askSplitWalletScene = new BaseScene("askSplitWalletScene");
+askSplitWalletScene.enter((ctx) => {
   ctx.reply("Enter the wallet address to receive the share:");
 });
-splitDetailsScene.on("text", (ctx) => {
-  ctx.session.walletAddress = ctx.message.text;
+
+askSplitWalletScene.on("text", (ctx) => {
+  const input = ctx.message.text;
+
+  const validation = walletAddressSchema.safeParse(input);
+  if (!validation.success) {
+    return ctx.reply(validation.error.errors[0].message);
+  }
+
+  ctx.session.walletAddress = input;
   ctx.scene.enter("startTimeScene");
 });
 
@@ -66,8 +111,8 @@ startTimeScene.enter((ctx) => {
   previousMessage = ctx.reply(
     "Set raffle start time:",
     Markup.inlineKeyboard([
-      [Markup.button.callback("Now", "start_now")],
-      [Markup.button.callback("Select time", "select_time")],
+      [Markup.button.callback("🙌 Now", "start_now")],
+      [Markup.button.callback("🕰️ Select time", "select_time")],
     ])
   );
 });
@@ -83,8 +128,16 @@ startTimeScene.action("select_time", async (ctx) => {
   await ctx.deleteMessage(previousMessage.message_id);
   ctx.reply("Enter start time in days and hours (e.g., 2d 3h):");
 });
+
 startTimeScene.on("text", (ctx) => {
-  ctx.session.startTime = ctx.message.text;
+  const input = ctx.message.text;
+
+  const validation = startTimeSchema.safeParse(input);
+  if (!validation.success) {
+    return ctx.reply(validation.error.errors[0].message);
+  }
+
+  ctx.session.startTime = input;
   ctx.scene.enter("raffleLimitScene");
 });
 
@@ -93,8 +146,8 @@ raffleLimitScene.enter((ctx) => {
   ctx.reply(
     "Set raffle limit:",
     Markup.inlineKeyboard([
-      [Markup.button.callback("Time based", "time_based")],
-      [Markup.button.callback("Value based", "value_based")],
+      [Markup.button.callback("⏱️ Time based", "time_based")],
+      [Markup.button.callback("#️⃣ Value based", "value_based")],
     ])
   );
 });
@@ -105,6 +158,7 @@ raffleLimitScene.action("time_based", async (ctx) => {
   ctx.session.raffleLimitType = "time_based";
   ctx.reply("Enter end time (e.g., 2d 3h):");
 });
+
 raffleLimitScene.action("value_based", async (ctx) => {
   await ctx.sendMessage("You selected value based raffle limit");
   await ctx.deleteMessage(previousMessage.message_id);
@@ -113,16 +167,47 @@ raffleLimitScene.action("value_based", async (ctx) => {
 });
 
 raffleLimitScene.on("text", (ctx) => {
-  ctx.session.raffleLimit = ctx.message.text;
+  const input = ctx.message.text;
+
+  if (ctx.session.raffleLimitType === "time_based") {
+    const validation = startTimeSchema.safeParse(input);
+    if (!validation.success) {
+      return ctx.reply(validation.error.errors[0].message);
+    }
+  } else if (ctx.session.raffleLimitType === "value_based") {
+    const validation = raffleLimitSchema.safeParse(input);
+    if (!validation.success) {
+      return ctx.reply(validation.error.errors[0].message);
+    }
+  }
+
+  ctx.session.raffleLimit = input;
   ctx.scene.enter("maxTicketsSingleUserCanBuy");
 });
 
 const maxTicketsSingleUserCanBuy = new BaseScene("maxTicketsSingleUserCanBuy");
 maxTicketsSingleUserCanBuy.enter((ctx) => {
-  ctx.reply("What is the max amount of tickets single user can buy");
+  ctx.reply("What is the max amount of tickets a single user can buy?");
 });
+
 maxTicketsSingleUserCanBuy.on("text", (ctx) => {
-  ctx.session.maxTicketsSingleUserCanBuy = ctx.message.text;
+  const input = ctx.message.text;
+
+  const validation = maxTicketsSchema.safeParse(input);
+  if (!validation.success) {
+    return ctx.reply(validation.error.errors[0].message);
+  }
+
+  if (
+    ctx.session.raffleLimitType === "value_based" &&
+    ctx.session.raffleLimit < input
+  ) {
+    return ctx.reply(
+      `Maximum number of tickets per wallet must be less than ${ctx.session.raffleLimit}(Raffle Limit)`
+    );
+  }
+
+  ctx.session.maxTicketsSingleUserCanBuy = input;
   ctx.scene.enter("rafflePurposeScene");
 });
 
@@ -130,8 +215,16 @@ const rafflePurposeScene = new BaseScene("rafflePurposeScene");
 rafflePurposeScene.enter((ctx) => {
   ctx.reply("Add raffle purpose or description:");
 });
+
 rafflePurposeScene.on("text", (ctx) => {
-  ctx.session.raffleDescription = ctx.message.text;
+  const input = ctx.message.text;
+
+  const validation = raffleDescriptionSchema.safeParse(input);
+  if (!validation.success) {
+    return ctx.reply(validation.error.errors[0].message);
+  }
+
+  ctx.session.raffleDescription = input;
   ctx.scene.enter("confirmScene");
 });
 
@@ -140,16 +233,20 @@ confirmScene.enter((ctx) => {
   const details = `
 Raffle Title: ${ctx.session.raffleTitle}
 Ticket Price: ${ctx.session.ticketPrice}ETH
-Split: ${ctx.session.split ? `Yes (${ctx.session.splitPercent}%)` : "No"}
-Start Time: ${ctx.session.startTime}
-Limit: ${ctx.session.raffleLimit}
-Description: ${ctx.session.raffleDescription}
+Split: ${
+    ctx.session.split
+      ? `Yes (${ctx.session.splitPercent}%)\nSplit Address:${ctx.session.walletAddress}`
+      : "No"
+  }
+Raffle Start Time: ${ctx.session.startTime}
+Raffle Limit: ${ctx.session.raffleLimit}
+Raffle Description/Purpose: ${ctx.session.raffleDescription}
   `;
   ctx.reply(
     `Confirm raffle details:\n${details}`,
     Markup.inlineKeyboard([
-      [Markup.button.callback("Confirm and Create", "confirm")],
-      [Markup.button.callback("Cancel", "cancel")],
+      [Markup.button.callback("☑️ Confirm and Create", "confirm")],
+      [Markup.button.callback("❌ Cancel", "cancel")],
     ])
   );
 });
@@ -223,6 +320,7 @@ export const addRaffleScenes = [
   rafflePurposeScene,
   confirmScene,
   maxTicketsSingleUserCanBuy,
+  askSplitWalletScene,
 ];
 
 export const handleCreateRaffleWithoutReferral = async (ctx, walletAddress) => {
@@ -331,7 +429,6 @@ export const handleAddRaffle = async (ctx) => {
         );
         return;
       }
-
       const groupButtons = groups.map((group) =>
         Markup.button.callback(
           group.groupUsername,

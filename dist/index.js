@@ -30,6 +30,7 @@ const bot_utils_2 = require("./utils/bot-utils");
 const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
+const update_raffle_1 = require("./scenes/update-raffle");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -47,6 +48,7 @@ const stage = new telegraf_1.Scenes.Stage([
     chooseWalletNameScene_1.chooseWalletNameStep,
     generateWalletSeedScene_2.generateWalletSeedStep,
     ...add_raffle_actions_1.addRaffleScenes,
+    ...update_raffle_1.updateRaffleScenes,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -216,6 +218,7 @@ bot.action("enter_referral_again", (ctx) => __awaiter(void 0, void 0, void 0, fu
 // Handle "Proceed without referral" option
 bot.action("proceed_without_referral", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const walletAddress = ctx.session.walletAddress;
+    console.log(walletAddress);
     yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress);
 }));
 // ----------------- referal code end -----------
@@ -353,6 +356,7 @@ bot.action(/^ADD_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, functi
 }));
 bot.action(/^UPDATE_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
+    ctx.scene.enter("updateRaffleScene");
 }));
 bot.action(/^VIEW_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
