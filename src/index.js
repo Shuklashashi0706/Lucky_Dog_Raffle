@@ -13,6 +13,7 @@ import {
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
 } from "./scenes/add-raffle-actions";
+import { buyRaffleScene } from "./scenes/buy-raffle-scene";
 import {
   handleReferralCode,
   handleCreateNewReferal,
@@ -48,6 +49,7 @@ const stage = new Scenes.Stage([
   chooseWalletNameStep,
   generateWalletSeedStep,
   ...addRaffleScenes,
+  buyRaffleScene,
 ]);
 
 bot.use(session());
@@ -232,7 +234,6 @@ bot.action("select_wallet_address", async (ctx) => {
   await handleSelectWallet(ctx);
 });
 
-// Bot action to handle wallet selection from the inline keyboard
 bot.action(/^select_wallet_/, async (ctx) => {
   const walletAddress = ctx.match.input.split("select_wallet_")[1]; // Extract wallet address from callback data
 
@@ -244,12 +245,10 @@ bot.action(/^select_wallet_/, async (ctx) => {
   await handleWalletSelection(ctx, walletAddress);
 });
 
-// Handle "Enter again" option
 bot.action("enter_referral_again", async (ctx) => {
   await handleCreateRaffleWithReferral(ctx);
 });
 
-// Handle "Proceed without referral" option
 bot.action("proceed_without_referral", async (ctx) => {
   const walletAddress = ctx.session.walletAddress;
   await handleCreateRaffleWithoutReferral(ctx, walletAddress);
@@ -258,7 +257,6 @@ bot.action("proceed_without_referral", async (ctx) => {
 // ----------------- referal code end -----------
 
 // -------------- create raffle start ------------
-// Handle the action when a wallet address is selected
 bot.action(/^wallet_(.*)/, async (ctx) => {
   await ctx.deleteMessage();
   const walletAddress = ctx.match[1];
@@ -285,7 +283,6 @@ bot.action(/^wallet_(.*)/, async (ctx) => {
   );
 });
 
-// Handle "Yes, I have a referral code"
 bot.action(/^has_referral_(.*)/, async (ctx) => {
   if (prevMessageState.prevMessage) {
     await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
@@ -293,7 +290,7 @@ bot.action(/^has_referral_(.*)/, async (ctx) => {
   const walletAddress = ctx.match[1]; // Extract wallet address from callback data
   await handleCreateRaffleWithReferral(ctx, walletAddress);
 });
-// Handle "No, continue without referral"
+
 bot.action(/^no_referral_(.*)/, async (ctx) => {
   if (prevMessageState.prevMessage) {
     await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
@@ -303,7 +300,7 @@ bot.action(/^no_referral_(.*)/, async (ctx) => {
 });
 // -------------- create raffle end ------------
 
-// -----------------------adding bot to group-------------------
+// -----------------------adding bot to group start-------------------
 bot.on("new_chat_members", async (ctx) => {
   if (
     ctx.message.new_chat_members.some((member) => member.id === ctx.botInfo.id)
@@ -434,6 +431,13 @@ bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
   // Handle the logic for viewing raffle details
   await ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
 });
+// -----------------------adding bot to group end-------------------
+
+// ---------------------------- buy raffle start------------------------------
+bot.command("lucky", async (ctx) => {
+  ctx.scene.enter("buyRaffleScene");
+});
+// ---------------------------- buy raffle end------------------------------
 
 connectDB();
 
