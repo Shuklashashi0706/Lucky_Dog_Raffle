@@ -376,7 +376,6 @@ export async function walletsCommand(ctx, wallets) {
 
   // inlineKeyboard.push([backToMenuBtn]);
 
-
   ctx.deleteMessage(processingReply.message_id);
 
   replyWithHTMLAndInlineKeyboard(ctx, htmlMessage, inlineKeyboard);

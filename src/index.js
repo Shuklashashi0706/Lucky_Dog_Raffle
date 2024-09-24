@@ -14,6 +14,8 @@ import {
   handleCreateRaffleWithReferral,
 } from "./scenes/add-raffle-actions";
 import { buyRaffleScenes } from "./scenes/buy-raffle-scene";
+import { buyRafflePaymentScenes } from "./utils/buyRaffle";
+import { botEventEmitter } from "./scenes/buy-raffle-scene";
 import {
   handleReferralCode,
   handleCreateNewReferal,
@@ -31,6 +33,10 @@ import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
 import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
 import { updateRaffleScenes } from "./scenes/update-raffle";
+import {
+  handleBuyRaffle,
+  handleBuyRaffleWithoutWallet,
+} from "./utils/buyRaffle";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -51,6 +57,7 @@ const stage = new Scenes.Stage([
   ...addRaffleScenes,
   ...updateRaffleScenes,
   ...buyRaffleScenes,
+  ...buyRafflePaymentScenes,
 ]);
 
 bot.use(session());
@@ -252,7 +259,7 @@ bot.action("enter_referral_again", async (ctx) => {
 
 bot.action("proceed_without_referral", async (ctx) => {
   const walletAddress = ctx.session.walletAddress;
-  console.log(walletAddress)
+  console.log(walletAddress);
   await handleCreateRaffleWithoutReferral(ctx, walletAddress);
 });
 
@@ -439,6 +446,44 @@ bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
 // ---------------------------- buy raffle start------------------------------
 bot.command("lucky", async (ctx) => {
   ctx.scene.enter("buyRaffleScene");
+});
+// Event listener for 'dmSent' to trigger action
+botEventEmitter.on("dmSent", async ({ userId, ctx, raffleDetails }) => {
+  ctx.session.raffleDetails = raffleDetails;
+  await bot.handleUpdate({
+    ...ctx.update,
+    message: {
+      text: "sendmessageinprivatedm",
+      chat: { id: userId },
+      from: { id: userId },
+    },
+  });
+});
+
+// Action handler for 'sendmessageinprivatedm'
+bot.action("sendmessageinprivatedm", async (ctx) => {
+  const message = await ctx.reply("Checking for wallets.....");
+  if (ctx.session.wallets) {
+    await ctx.deleteMessage(message.message_id);
+    handleBuyRaffle(ctx);
+  } else {
+    await ctx.deleteMessage(message.message_id);
+    handleBuyRaffleWithoutWallet(ctx);
+  }
+});
+
+// Action handler for wallet selection
+bot.action(/buy_raffle_wallet_(.+)/, async (ctx) => {
+  const selectedWallet = ctx.match[1];
+  if (selectedWallet === "metamask") {
+    await ctx.reply(
+      "You selected Metamask application. Please proceed with the Metamask payment."
+    );
+    // Add your Metamask payment handling logic here
+  } else {    
+    ctx.session.buyRaffleSelectedWalletAddress = selectedWallet;
+    await ctx.scene.enter("buyRaffleContractCallScene");
+  }
 });
 // ---------------------------- buy raffle end------------------------------
 

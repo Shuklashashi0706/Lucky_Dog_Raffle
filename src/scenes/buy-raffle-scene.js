@@ -2,13 +2,22 @@ const { Scenes, Markup } = require("telegraf");
 const { BaseScene } = Scenes;
 import Raffle from "../models/raffle";
 const { ethers } = require("ethers");
+import EventEmitter from "events";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
+import { EventEmitter } from "stream";
+
+//for using raffleDetail buyRaffle
+export const raffleDetailStore = new Map();
+
+class BotEventEmitter extends EventEmitter {}
+export const botEventEmitter = new BotEventEmitter();
 
 let previousMessage;
 export const buyRaffleScene = new BaseScene("buyRaffleScene");
 
 buyRaffleScene.enter(async (ctx) => {
   const groupId = ctx?.chat.id;
+  const userId = ctx.message.from.id;
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
@@ -20,7 +29,6 @@ buyRaffleScene.enter(async (ctx) => {
   if (ctx.chat.type === "supergroup") {
     try {
       const raffle = await Raffle.findOne({ groupId });
-
       if (!raffle) {
         await ctx.deleteMessage(previousMessage.message_id);
         await ctx.reply("🚫 No raffle found for this group.");
@@ -28,7 +36,12 @@ buyRaffleScene.enter(async (ctx) => {
       }
 
       const raffleDetails = await contract.getRaffleDetails(raffle.raffleId);
-
+      const raffleId = raffle.raffleId;
+      raffleDetailStore.set(userId, {
+        raffle: raffleDetails,
+        raffleId: raffleId,
+        groupId: groupId,
+      });
       const raffleStartTime = raffleDetails.raffleStartTime.toNumber();
       const raffleEndTime = raffleDetails.raffleEndTime.toNumber();
       const maxTickets = raffleDetails.maxTickets.toString();
@@ -97,7 +110,7 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
   const userId = ctx.match[1]; // Extract the user ID from the callback data
   const groupName = ctx.session.groupName || "Group"; // Get the group name from the session
   const raffleTitle = ctx.session.raffleTitle || "Raffle"; // Get the raffle title from the session
-
+  const raffleDetails = ctx.session.raffleDetails;
   try {
     // Send a private message to the user with the raffle details
     await ctx.telegram.sendMessage(
@@ -111,11 +124,14 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
     const sentMessage = await ctx.reply(
       `📩 Please check your DMs,${ctx.from.id}, to proceed with your ticket purchase! 🎟️`
     );
+
+    // Emit a custom event after sending the DM with user ID and group context
+    botEventEmitter.emit("dmSent", { userId, ctx, raffleDetails });
+
     setTimeout(
       async () => await ctx.deleteMessage(sentMessage.message_id),
       10000
     );
-    ctx.scene.enter("walletScene");
   } catch (error) {
     console.error("Error sending private message:", error);
     await ctx.reply(
@@ -124,9 +140,4 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
   }
 });
 
-export const walletScene = new BaseScene("walletScene");
-
-walletScene.enter(async (ctx) => {
-});
-
-export const buyRaffleScenes = [buyRaffleScene, walletScene];
+export const buyRaffleScenes = [buyRaffleScene];
