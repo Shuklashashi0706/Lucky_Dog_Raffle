@@ -1,8 +1,7 @@
 import { Scenes } from "telegraf";
 import { makeItClickable } from "../utils/bot-utils";
-import { handleConfirmDetails } from "./add-raffle-actions";
 import { handleSelectWallet } from "./referal-code";
-
+import { handleBuyRaffle } from "../utils/buyRaffle";
 export const chooseWalletNameScene = "chooseWalletNameScene";
 export const chooseWalletNameStep = new Scenes.BaseScene(chooseWalletNameScene);
 
@@ -34,21 +33,23 @@ chooseWalletNameStep.on("text", async (ctx) => {
         )}`
       );
 
-      // Redirect to confirm payment method if needed
       if (ctx.session.selectWalletReferal) {
-        await ctx.scene.leave(); // Ensure the scene is left before proceeding
-        await handleSelectWallet(ctx); // Handle the wallet referral
+        await ctx.scene.leave();
+        await handleSelectWallet(ctx);
         ctx.session.selectWalletReferal = false;
       } else if (ctx.session.needsPaymentConfirmation) {
-        await ctx.scene.leave(); // Ensure the scene is left before proceeding
-        await ctx.scene.enter("confirmScene"); // Handle payment confirmation
+        await ctx.scene.leave();
+        await ctx.scene.enter("confirmScene");
         ctx.session.needsPaymentConfirmation = false;
+      } else if (ctx.session.BuyRaffle) {
+        await ctx.scene.leave();
+        await handleBuyRaffle(ctx);
+        delete ctx.session.BuyRaffle;
       } else {
         await ctx.scene.leave();
       }
     }
   }
 
-  // Clear the newWallet session after usage
   delete ctx.session.newWallet;
 });

@@ -11,11 +11,6 @@ export const createRaffle = async (ctx, privateKey) => {
     CHAIN["sepolia"].rpcUrl
   );
 
-  if (!privateKey) {
-    ctx.reply(
-      "Private key is not defined...just for testing purpose ...remove it"
-    );
-  }
   const wallet = new Wallet(privateKey, provider);
 
   const _entryCost = ethers.utils.parseEther(ctx.session.ticketPrice);

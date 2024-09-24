@@ -4,7 +4,7 @@ import { makeItClickable } from "../utils/bot-utils";
 import { decrypt } from "../utils/encryption-utils";
 import { handleConfirmDetails } from "./add-raffle-actions";
 import { handleSelectWallet } from "./referal-code";
-
+import { handleBuyRaffle } from "../utils/buyRaffle";
 export const generateWalletSeedScene = "generateWalletSeedScene";
 export const generateWalletSeedStep = new Scenes.BaseScene(
   generateWalletSeedScene
@@ -41,17 +41,20 @@ generateWalletSeedStep.on("text", async (ctx) => {
         )}\n\nMake sure to save the information above offline. Never send it to anyone, and never hold it in a plain text format on a device connected to the internet. You can also import the wallet above in your Web3 wallet provider (Metamask, Trust Wallet, etc).\n\nOnce you're finished writing down your secret phrase, delete this message. DracoFlip will never display this information again.\n\nSubmit the /wallets command to check the wallet.`
       );
 
-      // Now handle redirection or other session needs
       if (ctx.session.selectWalletReferal) {
-        await ctx.scene.leave(); // Ensure the scene is left before proceeding
-        await handleSelectWallet(ctx); // Handle the wallet referral
+        await ctx.scene.leave();
+        await handleSelectWallet(ctx);
         ctx.session.selectWalletReferal = false;
       } else if (ctx.session.needsPaymentConfirmation) {
-        await ctx.scene.leave(); // Ensure the scene is left before proceeding
-        ctx.scene.enter("confirmScene"); // Handle payment confirmation
+        await ctx.scene.leave();
+        ctx.scene.enter("confirmScene");
         ctx.session.needsPaymentConfirmation = false;
+      } else if (ctx.session.BuyRaffle) {
+        await ctx.scene.leave();
+        await handleBuyRaffle(ctx);
+        delete ctx.session.BuyRaffle;
       } else {
-        await ctx.scene.leave(); // Leave the scene if no other actions are needed
+        await ctx.scene.leave();
       }
     }
   }
