@@ -1,6 +1,5 @@
-import { Wallet, ethers, Contract } from "ethers";
-import { encrypt, decrypt } from "./encryption-utils";
-import { COIN_FLIP_CONTRACT, COIN_FLIP_ABI, CHAIN } from "../config";
+import { Wallet, ethers } from "ethers";
+import { encrypt } from "./encryption-utils";
 
 // Function to generate an account
 export function generateAccount(seedPhrase = "", index = 0) {

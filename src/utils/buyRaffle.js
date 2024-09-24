@@ -1,10 +1,10 @@
 import { Markup, Scenes } from "telegraf";
 import { raffleDetailStore } from "../scenes/buy-raffle-scene.js";
-import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config.ts";
+import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import { Wallet, ethers, Contract } from "ethers";
 import axios from "axios";
 import { getWalletByAddress } from "./bot-utils.js";
-import { decrypt } from "./encryption-utils.ts";
+import { decrypt } from "./encryption-utils";
 import axios from "axios";
 
 export const raffleDetail = new Map();
