@@ -25,6 +25,27 @@ export async function getRaffleDetails(raffleId) {
 export async function endRaffle(raffleId) {
   try {
     const details = await contract.endRaffle(raffleId);
+    contract.on("RaffleEnded", async (raffleId, winner, winnerShare) => {
+
+      try {
+        
+        const raffle = await Raffle.findOne({
+          raffleId: raffleId.toString(),
+        });
+
+        if (raffle) {
+          raffle.isActive = false;
+          // raffle.winner = winner;
+          // raffle.winnerShare = ethers.utils.formatEther(winnerShare.toString());
+          await raffle.save();
+          console.log(`Raffle ${raffleId} updated in the database.`);
+        } else {
+          console.log(`Raffle with ID ${raffleId} not found in the database.`);
+        }
+      } catch (error) {
+        console.error("Error updating raffle:", error);
+      }
+    });
     return details;
   } catch (error) {
     console.error(`Error fetching raffle details for ID ${raffleId}:`, error);
