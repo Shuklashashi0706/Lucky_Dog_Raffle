@@ -31,6 +31,7 @@ import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
 import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
 import { updateRaffleScenes } from "./scenes/update-raffle";
+import { createRaffleViaMetaMask } from "./utils/mm-sdk";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -39,7 +40,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-  bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
+  bot = new Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
 } else {
   bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 }
@@ -157,10 +158,8 @@ bot.action("wallets", async (ctx) => {
 });
 
 bot.action("metamask", async (ctx) => {
-  if (prevMessageState.prevMessage) {
-    await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
-  }
-  await handleMetamaskApplication(ctx);
+  await ctx.deleteMessage()
+  await createRaffleViaMetaMask(ctx, "idk");
 });
 
 // create wallet buttons

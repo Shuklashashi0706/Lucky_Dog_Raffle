@@ -1,4 +1,3 @@
-// Define types for CHAIN configuration
 type ChainConfig = {
   rpcUrl?: string;
   explorerUrl?: string;
@@ -11,11 +10,9 @@ type Chains = {
   [key: string]: ChainConfig;
 };
 
-// Define CHAIN object with type
 export const CHAIN: Chains = {
   sepolia: {
-    rpcUrl:
-      `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_RPC_API_KEY}`,
+    rpcUrl: `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_RPC_API_KEY}`,
   },
   "mumbai-testnet": {
     rpcUrl:
@@ -27,10 +24,8 @@ export const CHAIN: Chains = {
   },
 };
 
-// Define the bot name
 export const BOT_NAME: string = "LuckyDogRaffle";
 
-// Define the ABI for the Coin Flip contract
 export const RAFFLE_ABI: any[] = [
   {
     inputs: [
@@ -431,4 +426,5 @@ export const RAFFLE_ABI: any[] = [
   },
 ];
 // Define the contract address
-export const RAFFLE_CONTRACT: string = "0x257C3d22dC8249A8b0308153B9F2C4F7FAa459D4";
+export const RAFFLE_CONTRACT: string =
+  "0x257C3d22dC8249A8b0308153B9F2C4F7FAa459D4";
