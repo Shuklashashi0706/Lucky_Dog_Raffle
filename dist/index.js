@@ -34,11 +34,7 @@ const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
 const update_raffle_1 = require("./scenes/update-raffle");
-<<<<<<< HEAD
-const mm_sdk_1 = require("./utils/mm-sdk");
-=======
 const buyRaffle_2 = require("./utils/buyRaffle");
->>>>>>> 6dc13db915a10e2125be77e3c2621d9bb8b9a390
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -58,10 +54,7 @@ const stage = new telegraf_1.Scenes.Stage([
     ...add_raffle_actions_1.addRaffleScenes,
     ...update_raffle_1.updateRaffleScenes,
     ...buy_raffle_scene_1.buyRaffleScenes,
-<<<<<<< HEAD
-=======
     ...buyRaffle_1.buyRafflePaymentScenes,
->>>>>>> 6dc13db915a10e2125be77e3c2621d9bb8b9a390
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -151,7 +144,7 @@ bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
 }));
 bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
-    yield (0, mm_sdk_1.createRaffleViaMetaMask)(ctx, "idk");
+    yield createRaffleViaMetaMask(ctx, "idk");
 }));
 // create wallet buttons
 bot.action("import-existing-wallet", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
