@@ -197,10 +197,9 @@ maxTicketsSingleUserCanBuy.on("text", (ctx) => {
   if (!validation.success) {
     return ctx.reply(validation.error.errors[0].message);
   }
-
   if (
     ctx.session.raffleLimitType === "value_based" &&
-    ctx.session.raffleLimit < input
+    Number(ctx.session.raffleLimit) < Number(input)
   ) {
     return ctx.reply(
       `Maximum number of tickets per wallet must be less than ${ctx.session.raffleLimit}(Raffle Limit)`

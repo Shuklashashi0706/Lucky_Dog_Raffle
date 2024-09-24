@@ -66,6 +66,8 @@ export const createRaffleViaMetaMask = async (ctx) => {
       const wallet = new ethers.providers.Web3Provider(ethereum).getSigner(
         from
       );
+
+      // return wallet;
       const contract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
       const _entryCost = ethers.utils.parseEther(ctx.session.ticketPrice);
       const _raffleStartTime =
