@@ -269,7 +269,7 @@ confirmScene.action("confirm", async (ctx) => {
     walletButtons.push([
       {
         text: "Metamask application",
-        callback_data: "metamask",
+        callback_data: "metamask_add_raffle",
       },
     ]);
 
@@ -290,7 +290,7 @@ confirmScene.action("confirm", async (ctx) => {
 
     const metamaskApp = {
       text: "Metamask Application",
-      callback_data: "metamask",
+      callback_data: "metamask_add_raffle",
     };
 
     await ctx.reply("How would you like to complete the transaction?", {

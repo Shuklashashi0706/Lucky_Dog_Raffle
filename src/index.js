@@ -37,6 +37,7 @@ import {
   handleBuyRaffle,
   handleBuyRaffleWithoutWallet,
 } from "./utils/buyRaffle";
+import { handleMMTransactions } from "./utils/mm-sdk";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -45,7 +46,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-  bot = new Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+  bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
 } else {
   bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 }
@@ -163,9 +164,12 @@ bot.action("wallets", async (ctx) => {
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
-bot.action("metamask", async (ctx) => {
-  await ctx.deleteMessage()
-  await createRaffleViaMetaMask(ctx, "idk");
+bot.action(/^metamask_(.*)/, async (ctx) => {
+  console.log("here");
+  console.log(ctx.match[1]);
+  await ctx.deleteMessage();
+  ctx.session.mmstate = ctx.match[1];
+  await handleMMTransactions(ctx);
 });
 
 // create wallet buttons
@@ -478,7 +482,7 @@ bot.action(/buy_raffle_wallet_(.+)/, async (ctx) => {
       "You selected Metamask application. Please proceed with the Metamask payment."
     );
     // Add your Metamask payment handling logic here
-  } else {    
+  } else {
     ctx.session.buyRaffleSelectedWalletAddress = selectedWallet;
     await ctx.scene.enter("buyRaffleContractCallScene");
   }

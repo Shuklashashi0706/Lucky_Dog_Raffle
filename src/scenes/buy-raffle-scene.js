@@ -28,6 +28,7 @@ buyRaffleScene.enter(async (ctx) => {
 
   if (ctx.chat.type === "supergroup") {
     try {
+      console.log(groupId)
       const raffle = await Raffle.findOne({ groupId });
       if (!raffle) {
         await ctx.deleteMessage(previousMessage.message_id);

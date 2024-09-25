@@ -12,7 +12,7 @@ type Chains = {
 
 export const CHAIN: Chains = {
   sepolia: {
-    rpcUrl: `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_RPC_API_KEY}`,
+    rpcUrl: `https://polygon-amoy.g.alchemy.com/v2/P2xwp8gerO9lweNzM0VvuGWVwt3tr_Pv`,
   },
   "mumbai-testnet": {
     rpcUrl:
@@ -427,4 +427,4 @@ export const RAFFLE_ABI: any[] = [
 ];
 // Define the contract address
 export const RAFFLE_CONTRACT: string =
-  "0x257C3d22dC8249A8b0308153B9F2C4F7FAa459D4";
+  "0xC7EB0dBBd6B0Cf51e51391C9a11481A95c28f33F";

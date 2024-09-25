@@ -35,6 +35,7 @@ const state_1 = require("./utils/state");
 const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
 const update_raffle_1 = require("./scenes/update-raffle");
 const buyRaffle_2 = require("./utils/buyRaffle");
+const mm_sdk_1 = require("./utils/mm-sdk");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -142,9 +143,12 @@ bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     }
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
-bot.action("metamask", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+bot.action(/^metamask_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log("here");
+    console.log(ctx.match[1]);
     yield ctx.deleteMessage();
-    yield createRaffleViaMetaMask(ctx, "idk");
+    ctx.session.mmstate = ctx.match[1];
+    yield (0, mm_sdk_1.handleMMTransactions)(ctx);
 }));
 // create wallet buttons
 bot.action("import-existing-wallet", (ctx) => __awaiter(void 0, void 0, void 0, function* () {

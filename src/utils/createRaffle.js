@@ -10,9 +10,14 @@ export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
   );
-
-  const wallet = new Wallet(privateKey, provider);
-
+  const feeData = await provider.getFeeData();
+  let wallet;
+  if (ctx.session.mmstate === "add_raffle") {
+    wallet = privateKey;
+  } else {
+    wallet = new Wallet(privateKey, provider);
+    ctx.session.currentWallet = wallet;
+  }
   const _entryCost = ethers.utils.parseEther(ctx.session.ticketPrice);
   const _raffleStartTime =
     ctx.session.startTime === "now" ? 0 : formatTime(ctx.session.startTime);
@@ -107,7 +112,9 @@ Good luck to all participants! 🍀
   contract.on(
     "RaffleCreated",
     async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
-      if (admin.toLowerCase() === wallet.address.toLowerCase()) {
+      if (
+        admin.toLowerCase() === ctx.session.currentWallet.address.toLowerCase()
+      ) {
         const raffleDetails = {
           raffleId: raffleId.toNumber(),
           raffleTitle: ctx.session.raffleTitle,
@@ -130,32 +137,7 @@ Good luck to all participants! 🍀
           console.log("Raffle saved successfully");
 
           const message = await getRaffleDetailsMessage(raffleId);
-
-          let botIDAndToken;
-          if (process.env.NODE_ENV === "development") {
-            botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
-          } else {
-            botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
-          }
-
-          if (groupId) {
-            const telegramApiUrl = `https://api.telegram.org/bot${botIDAndToken}/sendMessage?chat_id=${parseInt(
-              groupId
-            )}&text=${encodeURIComponent(message)}`;
-            try {
-              const res = await axios.get(telegramApiUrl);
-              if (res.status === 200) {
-                console.log("Message sent to the group successfully");
-              } else {
-                console.error("Failed to send message to the group:");
-              }
-            } catch (apiError) {
-              console.error("Failed to send message to the group:", apiError);
-            }
-          } else {
-            console.error("Group ID is undefined or invalid.");
-            await ctx.reply("Group ID is undefined or invalid.");
-          }
+          await ctx.telegram.sendMessage(groupId, message);
         } catch (dbError) {
           console.error("Error saving raffle to database:", dbError);
         }
@@ -164,6 +146,9 @@ Good luck to all participants! 🍀
   );
   try {
     await ctx.reply("Your transaction is being processed, please wait...");
+    if (ctx.session.mmstate === "add_raffle") {
+      await ctx.reply("Open MetaMask to sign the transaction...");
+    }
     const tx = await contract.createRaffle(
       _entryCost,
       _raffleStartTime,
@@ -172,7 +157,12 @@ Good luck to all participants! 🍀
       _tgOwner,
       _tgOwnerPercentage,
       _maxBuyPerWallet,
-      _referrer
+      _referrer,
+      {
+        maxFeePerGas: ethers.utils.parseUnits("30", "gwei"),
+        maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
+        gasLimit: ethers.utils.hexlify(500000),
+      }
     );
     await ctx.reply(`Transaction sent: ${tx.hash}`);
     await ctx.reply(`Your transaction is getting mined, please wait...`);
@@ -181,6 +171,7 @@ Good luck to all participants! 🍀
 
     await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     await ctx.reply("Raffle is created successfully ✨");
+    ctx.session.mmstate = null;
   } catch (error) {
     console.error("Error creating raffle:", error);
     if (error.reason) {
