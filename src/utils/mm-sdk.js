@@ -2,19 +2,21 @@ const { MetaMaskSDK } = require("@metamask/sdk");
 const qrcode = require("qrcode");
 const { ethers, Contract } = require("ethers");
 import { RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
- 
+import { createRaffle } from "./createRaffle";
+
 const userSessions = new Map();
-const ZERO_WALLET_ADDRESS = "0x0000000000000000000000000000000000000000";
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+const chainId = 80002;
 
 const sdk = new MetaMaskSDK({
   shouldShimWeb3: false,
-  chainId: 11155111,
+  chainId: 80002,
 });
 
 const ethereum = sdk.getProvider();
 
-export const createRaffleViaMetaMask = async (ctx) => {
+export const generateMMSigner = async (ctx) => {
   const userId = ctx.from.id;
 
   if (userSessions.has(userId)) {
@@ -54,6 +56,8 @@ export const createRaffleViaMetaMask = async (ctx) => {
         if (from !== undefined) {
           connected = true;
           await ctx.reply(`Wallet connected: ${from}`);
+
+          // await switchNetworkIfNeeded();
         }
       } catch (error) {
         console.error("Error connecting:", error);
@@ -61,58 +65,13 @@ export const createRaffleViaMetaMask = async (ctx) => {
       }
     }
 
+    ctx.session.currentWallet = from;
+
     if (from && userSessions.has(userId)) {
-      await ctx.reply("Initiating raffle creation...");
       const wallet = new ethers.providers.Web3Provider(ethereum).getSigner(
         from
       );
-
-      // return wallet;
-      const contract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
-      const _entryCost = ethers.utils.parseEther(ctx.session.ticketPrice);
-      const _raffleStartTime =
-        ctx.session.startTime === "now" ? 0 : formatTime(ctx.session.startTime);
-      const _raffleEndTime =
-        ctx.session.raffleLimitType === "time_based"
-          ? formatTime(ctx.session.raffleLimit)
-          : 0;
-      const _maxTickets =
-        ctx.session.raffleLimitType === "value_based"
-          ? Number(ctx.session.raffleLimit)
-          : 0;
-      const _tgOwner =
-        ctx.session.split === true
-          ? ctx.session.walletAddress
-          : "0xF27823f4A360d2372CeF4F5888D11D48F87AB312";
-      const _tgOwnerPercentage = ctx.session.splitPercent
-        ? Number(ctx.session.splitPercent)
-        : 0;
-      const _maxBuyPerWallet = Number(ctx.session.maxTicketsSingleUserCanBuy);
-      const _referrer = ZERO_WALLET_ADDRESS;
-      const groupId = ctx.session.createdGroup;
-      try {
-        await ctx.reply("Open MetaMask to sign the transaction...");
-        const tx = await contract.createRaffle(
-          _entryCost,
-          _raffleStartTime,
-          _raffleEndTime,
-          _maxTickets,
-          _tgOwner,
-          _tgOwnerPercentage,
-          _maxBuyPerWallet,
-          _referrer
-        );
-        await ctx.reply(`Transaction sent: ${tx.hash}`);
-        await ctx.reply("Your transaction is getting mined, please wait...");
-        const receipt = await tx.wait();
-        await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
-        await ctx.reply("Raffle created successfully 🎉");
-
-        return true;
-      } catch (error) {
-        console.error("Error creating raffle:", error);
-        await ctx.reply("Failed to create raffle. Please try again.");
-      }
+      return wallet;
     } else if (userSessions.has(userId)) {
       await ctx.reply("No account connected. Cannot create raffle.");
     }
@@ -133,3 +92,51 @@ export const cancelSession = async (ctx) => {
     await ctx.reply("You don't have an active session.");
   }
 };
+
+export const handleMMTransactions = async (ctx) => {
+  switch (ctx.session.mmstate) {
+    case "add_raffle":
+      const wallet = await generateMMSigner(ctx);
+      await createRaffle(ctx, wallet);
+  }
+};
+
+async function switchNetworkIfNeeded() {
+  const currentChainId = await ethereum.request({ method: "eth_chainId" });
+  if (currentChainId !== chainId) {
+    try {
+      await ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId }],
+      });
+      console.log(`Switched to Polygon Mumbai (Chain ID: ${chainId})`);
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId,
+                chainName: "Polygon Amoy Testnet",
+                rpcUrls: [
+                  "https://polygon-amoy.g.alchemy.com/v2/P2xwp8gerO9lweNzM0VvuGWVwt3tr_Pv",
+                ],
+                nativeCurrency: {
+                  name: "MATIC",
+                  symbol: "MATIC",
+                  decimals: 18,
+                },
+                blockExplorerUrls: ["https://amoy.polygonscan.com/"],
+              },
+            ],
+          });
+        } catch (addError) {
+          console.error("Failed to add the network:", addError);
+        }
+      } else {
+        console.error("Failed to switch network:", switchError);
+      }
+    }
+  }
+}
