@@ -78,10 +78,10 @@ Tickets Sold         : ${raffleDetails.ticketsSold}
         ctx.session.wallets.map((wallet) => {
           if (wallet.address === raffleDetails.admin) {
             ownerWalletFlag = true;
-            ctx.session.adminWalletAddress = wallet.address;
           }
         });
       }
+      ctx.session.adminWalletAddress = raffleDetails.admin;
       if (raffleDetails.raffleEndTime !== 0 && raffleDetails.maxTickets === 0) {
         ctx.session.timeBasedRaffle = true;
       } else {
@@ -95,7 +95,12 @@ Tickets Sold         : ${raffleDetails.ticketsSold}
           )}....${raffleDetails.admin.slice(-4)} in this session.`,
           Markup.inlineKeyboard([
             [Markup.button.callback("Import wallet", `import-existing-wallet`)],
-            [Markup.button.callback("Use Metamask", `mm`)],
+            [
+              Markup.button.callback(
+                "Use Metamask",
+                `metamask_update_owner_check`
+              ),
+            ],
           ])
         );
       } else {
@@ -200,8 +205,12 @@ timeBasedRaffle.enter(async (ctx) => {
 
 timeBasedRaffle.action("end_raffle", async (ctx) => {
   await ctx.deleteMessage();
-    await endRaffle(ctx.session.raffleId);
-  ctx.reply("The raffle has been ended.");
+  const success = await endRaffle(ctx,ctx.session.raffleId);
+  if (success) {
+    ctx.reply("The raffle has been ended.");
+  } else {
+    ctx.reply("Failed to end the raffle");
+  }
   ctx.scene.leave();
 });
 

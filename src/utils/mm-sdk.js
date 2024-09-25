@@ -1,7 +1,7 @@
 const { MetaMaskSDK } = require("@metamask/sdk");
 const qrcode = require("qrcode");
-const { ethers, Contract } = require("ethers");
-import { RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
+const { ethers } = require("ethers");
+import { Markup } from "telegraf";
 import { createRaffle } from "./createRaffle";
 
 const userSessions = new Map();
@@ -94,10 +94,34 @@ export const cancelSession = async (ctx) => {
 };
 
 export const handleMMTransactions = async (ctx) => {
+  const wallet = await generateMMSigner(ctx);
   switch (ctx.session.mmstate) {
     case "add_raffle":
-      const wallet = await generateMMSigner(ctx);
       await createRaffle(ctx, wallet);
+      break;
+    case "buy_ticket":
+      ctx.session.mmstate = "buy_ticket";
+      ctx.session.buyRaffleSelectedWalletAddress = await wallet.getAddress();
+      await ctx.scene.enter("buyRaffleContractCallScene");
+      break;
+    case "update_owner_check":
+      ctx.session.updateRaffleSelectedAddress = await wallet.getAddress();
+      if (
+        ctx.session.adminWalletAddress.toLowerCase() !==
+        ctx.session.updateRaffleSelectedAddress.toLowerCase()
+      ) {
+        ctx.reply(
+          `Admin Wallet:${ctx.session.adminWalletAddress.toLowerCase()} and connected wallet:${ctx.session.updateRaffleSelectedAddress.toLowerCase()} do not match`,
+          Markup.inlineKeyboard([
+            Markup.button.callback("Try Again", `metamask_update_owner_check`),
+          ])
+        );
+        ctx.session.updateRaffleSelectedAddress = null;
+      } else {
+        ctx.session.updateRaffleSelectedAddress = wallet;
+        ctx.session.mmstate = "update_raffle";
+        ctx.scene.enter("timeBasedRaffle");
+      }
   }
 };
 

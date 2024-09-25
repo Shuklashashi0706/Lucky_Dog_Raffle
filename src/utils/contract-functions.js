@@ -4,51 +4,50 @@ import { getWalletByAddress } from "./bot-utils";
 import { decrypt } from "./encryption-utils";
 import Raffle from "../models/raffle";
 
-const alchemySepoliaURL = `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_RPC_API_KEY}`;
+const provider = new ethers.providers.JsonRpcProvider(CHAIN["sepolia"].rpcUrl);
 
-const sepoliaProvider = new ethers.providers.JsonRpcProvider(alchemySepoliaURL);
-
-const contract = new ethers.Contract(
-  RAFFLE_CONTRACT,
-  RAFFLE_ABI,
-  sepoliaProvider
-);
+const contract = new ethers.Contract(RAFFLE_CONTRACT, RAFFLE_ABI, provider);
 export async function getRaffleDetails(raffleId) {
   try {
-    const details = await contract.getRaffleDetails(raffleId);
+    const details = await contract.getRaffleDetails(raffleId, {
+      maxFeePerGas: ethers.utils.parseUnits("30", "gwei"),
+      maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
+      gasLimit: ethers.utils.hexlify(500000),
+    });
     return details;
   } catch (error) {
     console.error(`Error fetching raffle details for ID ${raffleId}:`, error);
   }
 }
 
-export async function endRaffle(raffleId) {
+export async function endRaffle(ctx, raffleId) {
   try {
-    const details = await contract.endRaffle(raffleId);
-    contract.on("RaffleEnded", async (raffleId, winner, winnerShare) => {
-
-      try {
-        
-        const raffle = await Raffle.findOne({
-          raffleId: raffleId.toString(),
-        });
-
-        if (raffle) {
-          raffle.isActive = false;
-          // raffle.winner = winner;
-          // raffle.winnerShare = ethers.utils.formatEther(winnerShare.toString());
-          await raffle.save();
-          console.log(`Raffle ${raffleId} updated in the database.`);
-        } else {
-          console.log(`Raffle with ID ${raffleId} not found in the database.`);
-        }
-      } catch (error) {
-        console.error("Error updating raffle:", error);
-      }
+    let wallet;
+    if ((ctx.session.mmstate = "update_raffle")) {
+      wallet = ctx.session.updateRaffleSelectedAddress;
+    } else {
+      const walletAddress = ctx.session.adminWalletAddress;
+      const w = getWalletByAddress(ctx, walletAddress);
+      const privateKey = decrypt(w.privateKey);
+      wallet = new ethers.Wallet(privateKey, sepoliaProvider);
+    }
+    const contractWithSigner = new ethers.Contract(
+      RAFFLE_CONTRACT,
+      RAFFLE_ABI,
+      wallet
+    );
+    if ((ctx.session.mmstate = "update_raffle")) {
+      await ctx.reply("Open MetaMask to sign the transaction...");
+    }
+    await contractWithSigner.endRaffle(raffleId, {
+      maxFeePerGas: ethers.utils.parseUnits("30", "gwei"),
+      maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
+      gasLimit: ethers.utils.hexlify(500000),
     });
-    return details;
+    return 1;
   } catch (error) {
-    console.error(`Error fetching raffle details for ID ${raffleId}:`, error);
+    console.error(`Error ending raffle:${error.message}`);
+    return 0;
   }
 }
 
@@ -63,11 +62,15 @@ export async function updateRaffle(
   newTgOwnerPercent
 ) {
   try {
-    const walletAddress = ctx.session.adminWalletAddress;
-    const w = getWalletByAddress(ctx, walletAddress);
-    const privateKey = decrypt(w.privateKey);
-    const wallet = new ethers.Wallet(privateKey, sepoliaProvider);
-
+    let wallet;
+    if ((ctx.session.mmstate = "update_raffle")) {
+      wallet = ctx.session.updateRaffleSelectedAddress;
+    } else {
+      const walletAddress = ctx.session.adminWalletAddress;
+      const w = getWalletByAddress(ctx, walletAddress);
+      const privateKey = decrypt(w.privateKey);
+      wallet = new ethers.Wallet(privateKey, sepoliaProvider);
+    }
     const contractWithSigner = new ethers.Contract(
       RAFFLE_CONTRACT,
       RAFFLE_ABI,
@@ -95,44 +98,9 @@ export async function updateRaffle(
       newTgOwnerPercent !== null
         ? newTgOwnerPercent
         : ctx.session.raffleDetails.tgOwnerPercentage;
-    contractWithSigner.on(
-      "RaffleUpdated",
-      async (
-        raffleId,
-        admin,
-        maxTickets,
-        raffleEndTime,
-        raffleStartTime,
-        maxBuyPerWallet,
-        tgOwner,
-        tgOwnerPercentage
-      ) => {
-        if (admin.toLowerCase() === wallet.address.toLowerCase()) {
-          const raffleDetails = {
-            maxTickets: maxTickets.toNumber(),
-            raffleStartTime: raffleStartTime.toNumber(),
-            raffleEndTime: raffleEndTime.toNumber(),
-            maxBuyPerWallet: maxBuyPerWallet.toNumber(),
-            tgOwner: tgOwner,
-            tgOwnerPercentage: tgOwnerPercentage.toNumber(),
-          };
-          try {
-            const updatedRaffle = await Raffle.findOneAndUpdate(
-              { raffleId: raffleId.toNumber() },
-              raffleDetails,
-              { new: true }
-            );
-            if (updatedRaffle) {
-              console.log("Raffle updated successfully in the database");
-            } else {
-              console.error("Failed to update raffle in the database");
-            }
-          } catch (error) {
-            console.error("Error updating raffle in the database:", error);
-          }
-        }
-      }
-    );
+    if ((ctx.session.mmstate = "update_raffle")) {
+      await ctx.reply("Open MetaMask to sign the transaction...");
+    }
     const tx = await contractWithSigner.updateRaffle(
       raffleId,
       finalMaxTickets,
@@ -140,7 +108,12 @@ export async function updateRaffle(
       finalStartTime,
       finalMaxBuyPerWallet,
       finalTgOwner,
-      finalTgOwnerPercent
+      finalTgOwnerPercent,
+      {
+        maxFeePerGas: ethers.utils.parseUnits("30", "gwei"),
+        maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
+        gasLimit: ethers.utils.hexlify(500000),
+      }
     );
     await ctx.reply(`Transaction sent: ${tx.hash}`);
     await ctx.reply(`Your transaction is getting mined, please wait...`);
@@ -154,3 +127,58 @@ export async function updateRaffle(
     ctx.reply("Failed to update the raffle try again");
   }
 }
+
+contract.on("RaffleEnded", async (raffleId, winner, winnerShare) => {
+  try {
+    const raffle = await Raffle.findOne({
+      raffleId: raffleId.toString(),
+    });
+    if (raffle) {
+      raffle.isActive = false;
+      await raffle.save();
+      console.log(`Raffle ${raffleId} updated in the database.`);
+    } else {
+      console.log(`Raffle with ID ${raffleId} not found in the database.`);
+    }
+  } catch (error) {
+    console.error("Error updating raffle:", error);
+  }
+});
+contract.on(
+  "RaffleUpdated",
+  async (
+    raffleId,
+    admin,
+    maxTickets,
+    raffleEndTime,
+    raffleStartTime,
+    maxBuyPerWallet,
+    tgOwner,
+    tgOwnerPercentage
+  ) => {
+    // if (admin.toLowerCase() === wallet.address.toLowerCase()) {
+    const raffleDetails = {
+      maxTickets: maxTickets.toNumber(),
+      raffleStartTime: raffleStartTime.toNumber(),
+      raffleEndTime: raffleEndTime.toNumber(),
+      maxBuyPerWallet: maxBuyPerWallet.toNumber(),
+      tgOwner: tgOwner,
+      tgOwnerPercentage: tgOwnerPercentage.toNumber(),
+    };
+    try {
+      const updatedRaffle = await Raffle.findOneAndUpdate(
+        { raffleId: raffleId.toNumber() },
+        raffleDetails,
+        { new: true }
+      );
+      if (updatedRaffle) {
+        console.log("Raffle updated successfully in the database");
+      } else {
+        console.error("Failed to update raffle in the database");
+      }
+    } catch (error) {
+      console.error("Error updating raffle in the database:", error);
+    }
+  }
+  // }
+);
