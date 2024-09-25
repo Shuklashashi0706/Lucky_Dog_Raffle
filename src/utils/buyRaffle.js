@@ -21,7 +21,7 @@ export const handleBuyRaffleWithoutWallet = async (ctx) => {
     Markup.inlineKeyboard([
       [Markup.button.callback("Create wallet", "generate-wallet-seed")],
       [Markup.button.callback("Import wallet", "import-existing-wallet")],
-      [Markup.button.callback("Metamask application", "metamask")],
+      [Markup.button.callback("Metamask application", "metamask_buy_ticket")],
     ])
   );
 };
@@ -76,7 +76,7 @@ buyRafflePaymentScene.on("text", async (ctx) => {
 
   // Add Metamask button at the end
   walletButtons.push([
-    Markup.button.callback("Metamask application", "metamask"),
+    Markup.button.callback("Metamask application", "metamask_buy_ticket"),
   ]);
 
   await ctx.reply(
@@ -154,19 +154,29 @@ const confirmBuyRaffle = async (
     const provider = new ethers.providers.JsonRpcProvider(
       CHAIN["sepolia"].rpcUrl
     );
-
-    // Create a wallet instance
-    const wallet = new Wallet(privateKey, provider);
+    let wallet;
+    // if (ctx.session.mmstate === "buy_ticket") {
+    //   wallet = privateKey;
+    // } else {
+    wallet = new Wallet(privateKey, provider);
+    //   ctx.session.currentWallet = wallet;
+    // }
 
     // Create a contract instance
     const raffleContract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
 
     await ctx.reply(`Transaction in progress...`);
 
+    if (ctx.session.mmstate === "buy_ticket") {
+      await ctx.reply("Open MetaMask to sign the transaction...");
+    }
     // Send the transaction
     const tx = await raffleContract.buyTickets(raffleId, numTickets, {
-      value: ethers.utils.parseEther(totalCost.toString()), // Total cost of the tickets in wei
+      value: ethers.utils.parseEther(totalCost.toString()),
       from: walletAddress,
+      maxFeePerGas: ethers.utils.parseUnits("30", "gwei"),
+      maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
+      gasLimit: ethers.utils.hexlify(500000),
     });
 
     await ctx.reply(`Transaction sent! Waiting for confirmation...`);

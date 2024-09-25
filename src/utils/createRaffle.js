@@ -1,8 +1,6 @@
 import { Wallet, ethers, Contract } from "ethers";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import Raffle from "../models/raffle";
-import axios from "axios";
-import Raffle from "../models/raffle";
 import { formatTime } from "./fortmat-date";
 
 const ZERO_WALLET_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -14,9 +12,10 @@ export const createRaffle = async (ctx, privateKey) => {
   let wallet;
   if (ctx.session.mmstate === "add_raffle") {
     wallet = privateKey;
+    ctx.session.currentWallet = await wallet.getAddress();
   } else {
     wallet = new Wallet(privateKey, provider);
-    ctx.session.currentWallet = wallet;
+    ctx.session.currentWallet = wallet.address;
   }
   const _entryCost = ethers.utils.parseEther(ctx.session.ticketPrice);
   const _raffleStartTime =
@@ -113,8 +112,8 @@ Good luck to all participants! 🍀
     "RaffleCreated",
     async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
       if (
-        admin.toLowerCase() === ctx.session.currentWallet.address.toLowerCase()
-      ) {
+        admin.toLowerCase() === ctx.session.currentWallet.toLowerCase()
+      )  {
         const raffleDetails = {
           raffleId: raffleId.toNumber(),
           raffleTitle: ctx.session.raffleTitle,
@@ -167,7 +166,7 @@ Good luck to all participants! 🍀
     await ctx.reply(`Transaction sent: ${tx.hash}`);
     await ctx.reply(`Your transaction is getting mined, please wait...`);
 
-    const receipt = await tx.wait();
+    const receipt = await tx.wait(1, { timeout: 180000 });
 
     await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     await ctx.reply("Raffle is created successfully ✨");

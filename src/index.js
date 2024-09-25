@@ -46,7 +46,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-  bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
+  bot = new Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
 } else {
   bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 }
