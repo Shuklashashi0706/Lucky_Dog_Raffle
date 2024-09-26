@@ -3,6 +3,7 @@ import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import { getWalletByAddress } from "./bot-utils";
 import { decrypt } from "./encryption-utils";
 import Raffle from "../models/raffle";
+import { sendGroupMessage } from "./sendGroupMessage";
 
 const provider = new ethers.providers.JsonRpcProvider(CHAIN["sepolia"].rpcUrl);
 
@@ -20,8 +21,11 @@ export async function getRaffleDetails(raffleId) {
   }
 }
 
+let groupId;
+
 export async function endRaffle(ctx, raffleId) {
   try {
+    groupId = ctx.session.createdGroup;
     let wallet;
     if ((ctx.session.mmstate = "update_raffle")) {
       wallet = ctx.session.updateRaffleSelectedAddress;
@@ -137,6 +141,8 @@ contract.on("RaffleEnded", async (raffleId, winner, winnerShare) => {
       raffle.isActive = false;
       await raffle.save();
       console.log(`Raffle ${raffleId} updated in the database.`);
+      const message = `Raffle ${raffleId} has ended\nWinner: ${winner}\nWinner share: ${winnerShare}`;
+      sendGroupMessage(groupId, message);
     } else {
       console.log(`Raffle with ID ${raffleId} not found in the database.`);
     }

@@ -36,7 +36,7 @@ buyRafflePaymentScene.enter(async (ctx) => {
 
 buyRafflePaymentScene.on("text", async (ctx) => {
   const numberOfTickets = parseInt(ctx.message.text);
-  const sessionWallets = ctx.session.wallets || []; // Use an empty array if no wallets in session
+  const sessionWallets = ctx.session.wallets || [];
   const userId = ctx.message.from.id;
   ctx.session.userId = userId;
   // Validate the input
@@ -159,7 +159,7 @@ const confirmBuyRaffle = async (
     //   wallet = privateKey;
     // } else {
     wallet = new Wallet(privateKey, provider);
-    //   ctx.session.currentWallet = wallet;
+    ctx.session.currentWallet = wallet;
     // }
 
     // Create a contract instance

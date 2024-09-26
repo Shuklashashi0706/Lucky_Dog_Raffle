@@ -101,8 +101,8 @@ export const handleMMTransactions = async (ctx) => {
       break;
     case "buy_ticket":
       ctx.session.mmstate = "buy_ticket";
-      ctx.session.buyRaffleSelectedWalletAddress = await wallet.getAddress();
-      await ctx.scene.enter("buyRaffleContractCallScene");
+      ctx.session.buyRaffleSelectedWalletAddress = wallet;
+      await ctx.scene.enter("buyRafflePaymentScene");
       break;
     case "update_owner_check":
       ctx.session.updateRaffleSelectedAddress = await wallet.getAddress();

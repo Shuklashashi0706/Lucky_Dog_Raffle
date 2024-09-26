@@ -31,7 +31,6 @@ import { generateWalletSeedStep } from "./scenes/generateWalletSeedScene";
 import { btnDeleteWalletAction } from "./utils/bot-utils";
 import { getWalletByName, dynamicDeleteWalletAction } from "./utils/bot-utils";
 import { prevMessageState } from "./utils/state";
-import { handleMetamaskApplication } from "./scenes/add-raffle-actions";
 import { updateRaffleScenes } from "./scenes/update-raffle";
 import {
   handleBuyRaffle,
@@ -46,7 +45,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-  bot = new Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+  bot = new Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
 } else {
   bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 }
@@ -261,13 +260,9 @@ bot.action("enter_referral_again", async (ctx) => {
 
 bot.action("proceed_without_referral", async (ctx) => {
   const walletAddress = ctx.session.walletAddress;
-  console.log(walletAddress);
   await handleCreateRaffleWithoutReferral(ctx, walletAddress);
 });
 
-// ----------------- referal code end -----------
-
-// -------------- create raffle start ------------
 bot.action(/^wallet_(.*)/, async (ctx) => {
   await ctx.deleteMessage();
   const walletAddress = ctx.match[1];
