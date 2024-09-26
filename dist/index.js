@@ -32,7 +32,6 @@ const generateWalletSeedScene_2 = require("./scenes/generateWalletSeedScene");
 const bot_utils_2 = require("./utils/bot-utils");
 const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
-const add_raffle_actions_2 = require("./scenes/add-raffle-actions");
 const update_raffle_1 = require("./scenes/update-raffle");
 const buyRaffle_2 = require("./utils/buyRaffle");
 const mm_sdk_1 = require("./utils/mm-sdk");
@@ -43,7 +42,7 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 }
 let bot;
 if (process.env.NODE_ENV === "development") {
-    bot = new telegraf_1.Telegraf("7518728844:AAEoJq_x2GZyn20GstLgbfskoCsWLLf3TGU");
+    bot = new telegraf_1.Telegraf(process.env.LOCAL_TELEGRAM_BOT_TOKEN);
 }
 else {
     bot = new telegraf_1.Telegraf(process.env.TELEGRAM_BOT_TOKEN);

@@ -153,11 +153,12 @@ timeBasedRaffle.enter(async (ctx) => {
         );
       } else {
         ctx.reply(
-          "The raffle has already started, but there are no tickets purchased yet.",
-          Markup.inlineKeyboard([
-            [Markup.button.callback("End Raffle", "end_raffle")],
-          ])
+          "The raffle has already started, but there are no tickets purchased yet."
+          // Markup.inlineKeyboard([
+          //   [Markup.button.callback("End Raffle", "end_raffle")],
+          // ])
         );
+        ctx.scene.leave();
       }
     }
   } else {
@@ -193,11 +194,12 @@ timeBasedRaffle.enter(async (ctx) => {
         );
       } else {
         ctx.reply(
-          "The raffle has already started, but there are no tickets purchased yet.",
-          Markup.inlineKeyboard([
-            [Markup.button.callback("End Raffle", "end_raffle")],
-          ])
+          "The raffle has already started, but there are no tickets purchased yet."
+          // Markup.inlineKeyboard([
+          //   [Markup.button.callback("End Raffle", "end_raffle")],
+          // ])
         );
+        ctx.scene.leave();
       }
     }
   }
@@ -205,7 +207,7 @@ timeBasedRaffle.enter(async (ctx) => {
 
 timeBasedRaffle.action("end_raffle", async (ctx) => {
   await ctx.deleteMessage();
-  const success = await endRaffle(ctx,ctx.session.raffleId);
+  const success = await endRaffle(ctx, ctx.session.raffleId);
   if (success) {
     ctx.reply("The raffle has been ended.");
   } else {

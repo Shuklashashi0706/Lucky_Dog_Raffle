@@ -28,7 +28,7 @@ buyRaffleScene.enter(async (ctx) => {
 
   if (ctx.chat.type === "supergroup") {
     try {
-      const raffle = await Raffle.findOne({ groupId });
+      const raffle = await Raffle.findOne({ groupId, isActive: true });
       if (!raffle) {
         await ctx.deleteMessage(previousMessage.message_id);
         await ctx.reply("🚫 No raffle found for this group.");
@@ -133,7 +133,6 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
       10000
     );
   } catch (error) {
-
     console.error("Error sending private message:", error);
     await ctx.reply(
       "❌ Unable to send you a private message. Please make sure you have allowed messages from the bot."

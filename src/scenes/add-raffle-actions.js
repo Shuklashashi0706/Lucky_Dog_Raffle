@@ -339,10 +339,8 @@ export const handleCreateRaffleWithoutReferral = async (ctx, walletAddress) => {
 export const handleCreateRaffleWithReferral = async (ctx, walletAddress) => {
   const chatId = ctx.chat?.id.toString();
   if (chatId) {
-    if (state) {
-      ctx.session.walletAddress = walletAddress;
-      await ctx.reply("Enter your referral code:");
-    }
+    ctx.session.walletAddress = walletAddress;
+    await ctx.reply("Enter your referral code:");
   }
 };
 
