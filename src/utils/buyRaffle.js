@@ -138,6 +138,7 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   await ctx.reply(`Successfully notified the group about the purchase.`);
 });
 
+//buy raffle method of smart contract
 const confirmBuyRaffle = async (
   ctx,
   privateKey,
@@ -154,22 +155,18 @@ const confirmBuyRaffle = async (
     const provider = new ethers.providers.JsonRpcProvider(
       CHAIN["sepolia"].rpcUrl
     );
-    let wallet;
-    // if (ctx.session.mmstate === "buy_ticket") {
-    //   wallet = privateKey;
-    // } else {
-    wallet = new Wallet(privateKey, provider);
+    let wallet = new Wallet(privateKey, provider);
     ctx.session.currentWallet = wallet;
-    // }
 
     // Create a contract instance
     const raffleContract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
 
-    await ctx.reply(`Transaction in progress...`);
+    await ctx.reply("Your transaction is being processed, please wait...");
 
     if (ctx.session.mmstate === "buy_ticket") {
       await ctx.reply("Open MetaMask to sign the transaction...");
     }
+
     // Send the transaction
     const tx = await raffleContract.buyTickets(raffleId, numTickets, {
       value: ethers.utils.parseEther(totalCost.toString()),
@@ -179,27 +176,33 @@ const confirmBuyRaffle = async (
       gasLimit: ethers.utils.hexlify(500000),
     });
 
-    await ctx.reply(`Transaction sent! Waiting for confirmation...`);
+    // Show transaction hash
+    await ctx.reply(`Transaction sent: ${tx.hash}`);
+    await ctx.reply("Your transaction is getting mined, please wait...");
 
     // Wait for transaction confirmation
-    await tx.wait();
+    const receipt = await tx.wait();
 
+    // Show transaction receipt information
+    await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     await ctx.reply(
-      `Transaction successful! ${numTickets} tickets purchased for Raffle ID: ${raffleId}.`
+      `Transaction successful! ${numTickets} tickets purchased for Raffle ID: ${raffleId}. 🎉`
     );
+
+    ctx.session.mmstate = null; // Clear session state after transaction
   } catch (error) {
     if (error.code === ethers.errors.INSUFFICIENT_FUNDS) {
-      await ctx.reply("Error: Insufficient funds to complete the transaction.");
+      console.log("Error: Insufficient funds to complete the transaction.");
     } else if (error.code === ethers.errors.NONCE_EXPIRED) {
-      await ctx.reply(
+      console.log(
         "Error: The transaction nonce has expired. Please try again."
       );
     } else if (error.code === ethers.errors.UNPREDICTABLE_GAS_LIMIT) {
-      await ctx.reply(
+      console.log(
         "Error: Unpredictable gas limit. Please ensure the contract is deployed correctly."
       );
     } else {
-      await ctx.reply(`An error occurred: ${error.message}`);
+      console.log(`An error occurred: ${error.message}`);
     }
     console.error("Error during transaction:", error);
   }

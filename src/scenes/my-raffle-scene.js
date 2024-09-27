@@ -2,6 +2,8 @@ const { Scenes, Markup } = require("telegraf");
 const { BaseScene } = Scenes;
 import Raffle from "../models/raffle";
 export const myRaffle = new BaseScene("myRaffle");
+import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
+const { ethers } = require("ethers");
 
 let previousMessages = []; // Array to keep track of message IDs
 
@@ -22,31 +24,73 @@ const showRaffleDetails = async (ctx, raffleId) => {
   try {
     // Delete previous messages
     await deletePreviousMessages(ctx);
-
-    // Fetch the raffle details based on raffleId
+    await ctx.reply("Fetching raffle details....");
+    // Fetch the raffle details based on raffleId from MongoDB
     const raffle = await Raffle.findOne({ raffleId: raffleId });
+    if (!raffle) {
+      const response = await ctx.reply("Raffle not found in database.");
+      previousMessages.push(response.message_id); // Store new message ID
+      return;
+    }
 
-    if (raffle) {
-      const message = `
+    // Connect to the blockchain and fetch raffle details from the contract
+    const provider = new ethers.providers.JsonRpcProvider(
+      CHAIN["sepolia"].rpcUrl
+    );
+    const contract = new ethers.Contract(RAFFLE_CONTRACT, RAFFLE_ABI, provider);
+    const raffleDetails = await contract.getRaffleDetails(raffle.raffleId);
+
+    // Extract and format raffle details
+    const formattedDetails = {
+      admin: raffleDetails[0],
+      tgOwner: raffleDetails[1],
+      winner:
+        raffleDetails[2] === "0x0000000000000000000000000000000000000000"
+          ? "No winner yet"
+          : raffleDetails[2],
+      entryCost: ethers.utils.formatEther(raffleDetails[3]), // Convert from wei to ETH
+      raffleStartTime: new Date(
+        raffleDetails[4].toNumber() * 1000
+      ).toUTCString(), // Convert Unix timestamp to UTC string
+      raffleEndTime:
+        raffleDetails[5].toNumber() === 0
+          ? "Not set"
+          : new Date(raffleDetails[5].toNumber() * 1000).toUTCString(),
+      maxTickets: raffleDetails[6].toNumber(),
+      isActive: raffleDetails[7],
+      tgOwnerPercentage: raffleDetails[8].toNumber(),
+      maxBuyPerWallet: raffleDetails[9].toNumber(),
+      referrer:
+        raffleDetails[10] === "0x0000000000000000000000000000000000000000"
+          ? "No referrer"
+          : raffleDetails[10],
+      ticketsSold: raffleDetails[11].toNumber(),
+    };
+
+    // Construct the message with formatted details
+    const message = `
 🎟️ *Raffle Title:* ${raffle.raffleTitle}
 👥 *Group ID:* ${raffle.groupId}
-💰 *Entry Cost:* ${raffle.entryCost} ETH
-⏰ *Start Time:* ${new Date(raffle.raffleStartTime * 1000).toUTCString()}
-⌛ *End Time:* ${new Date(raffle.raffleEndTime * 1000).toUTCString()}
-🎟️ *Tickets Sold:* ${raffle.ticketsSold}
-🧑‍💼 *Owner:* ${raffle.tgOwner}
-🏷️ *Max Tickets Per Wallet:* ${raffle.maxBuyPerWallet}
+💰 *Entry Cost:* ${formattedDetails.entryCost} ETH
+⏰ *Start Time:* ${formattedDetails.raffleStartTime}
+⌛ *End Time:* ${formattedDetails.raffleEndTime}
+🎟️ *Tickets Sold:* ${formattedDetails.ticketsSold}
+🔢 *Max Tickets:* ${formattedDetails.maxTickets}
+🏷️ *Max Tickets Per Wallet:* ${formattedDetails.maxBuyPerWallet}
+🧑‍💼 *Owner:* ${formattedDetails.tgOwner}
+🎯 *Winner:* ${formattedDetails.winner}
+🔄 *Is Active:* ${formattedDetails.isActive ? "Yes" : "No"}
+🔗 *Referrer:* ${formattedDetails.referrer}
 `;
 
-      const response = await ctx.replyWithMarkdown(message);
-      previousMessages.push(response.message_id); // Store new message ID
-    } else {
-      const response = await ctx.reply("Raffle not found.");
-      previousMessages.push(response.message_id); // Store new message ID
-    }
+    // Send the formatted message to the user
+    const response = await ctx.replyWithMarkdown(message);
+    previousMessages.push(response.message_id); // Store new message ID
   } catch (error) {
     console.error("Error showing raffle details:", error);
-    const response = await ctx.reply("Sorry, an error occurred while showing raffle details.");
+    const response = await ctx.reply(
+      "Sorry, an error occurred while showing raffle details."
+    );
     previousMessages.push(response.message_id); // Store new message ID
   }
 };
@@ -85,7 +129,10 @@ const showActiveRaffles = async (ctx) => {
         ),
       ]);
 
-      const response = await ctx.reply("Your Active Raffles:", Markup.inlineKeyboard(buttons));
+      const response = await ctx.reply(
+        "Your Active Raffles:",
+        Markup.inlineKeyboard(buttons)
+      );
       previousMessages.push(response.message_id); // Store new message ID
     } else {
       const response = await ctx.reply("You have no active raffles.");
@@ -93,7 +140,9 @@ const showActiveRaffles = async (ctx) => {
     }
   } catch (error) {
     console.error("Error fetching active raffles:", error);
-    const response = await ctx.reply("Sorry, an error occurred while fetching active raffles.");
+    const response = await ctx.reply(
+      "Sorry, an error occurred while fetching active raffles."
+    );
     previousMessages.push(response.message_id); // Store new message ID
   }
 };
