@@ -13,6 +13,7 @@ export const createRaffle = async (ctx, privateKey) => {
   if (ctx.session.mmstate === "add_raffle") {
     wallet = privateKey;
     ctx.session.currentWallet = await wallet.getAddress();
+    delete ctx.session.mmstate;
   } else {
     wallet = new Wallet(privateKey, provider);
     ctx.session.currentWallet = wallet.address;
@@ -111,9 +112,7 @@ Good luck to all participants! 🍀
   contract.on(
     "RaffleCreated",
     async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
-      if (
-        admin.toLowerCase() === ctx.session.currentWallet.toLowerCase()
-      )  {
+      if (admin.toLowerCase() === ctx.session.currentWallet.toLowerCase()) {
         const raffleDetails = {
           raffleId: raffleId.toNumber(),
           raffleTitle: ctx.session.raffleTitle,

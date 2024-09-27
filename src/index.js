@@ -36,6 +36,7 @@ import {
   handleBuyRaffle,
   handleBuyRaffleWithoutWallet,
 } from "./utils/buyRaffle";
+import { myRaffle } from "./scenes/my-raffle-scene";
 import { handleMMTransactions } from "./utils/mm-sdk";
 dotenv.config();
 
@@ -58,6 +59,7 @@ const stage = new Scenes.Stage([
   ...updateRaffleScenes,
   ...buyRaffleScenes,
   ...buyRafflePaymentScenes,
+  myRaffle,
 ]);
 
 bot.use(session());
@@ -483,6 +485,12 @@ bot.action(/buy_raffle_wallet_(.+)/, async (ctx) => {
   }
 });
 // ---------------------------- buy raffle end------------------------------
+
+//--------------------my raffle start -------------------------
+bot.command("my_raffles", async (ctx) => {
+  await ctx.scene.enter("myRaffle");
+});
+//--------------------my raffle end -------------------------
 
 connectDB();
 
