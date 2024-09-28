@@ -461,14 +461,15 @@ botEventEmitter.on("dmSent", async ({ userId, ctx, raffleDetails }) => {
 
 // Action handler for 'sendmessageinprivatedm'
 bot.action("sendmessageinprivatedm", async (ctx) => {
-  const message = await ctx.reply("Checking for wallets.....");
-  if (ctx.session.wallets) {
-    await ctx.deleteMessage(message.message_id);
-    handleBuyRaffle(ctx);
-  } else {
-    await ctx.deleteMessage(message.message_id);
-    handleBuyRaffleWithoutWallet(ctx);
-  }
+  await ctx.scene.enter("buyRafflePaymentScene")
+  // const message = await ctx.reply("Checking for wallets.....");
+  // if (ctx.session.wallets) {
+  //   await ctx.deleteMessage(message.message_id);
+  //   handleBuyRaffle(ctx);
+  // } else {
+  //   await ctx.deleteMessage(message.message_id);
+  //   handleBuyRaffleWithoutWallet(ctx);
+  // }
 });
 
 // Action handler for wallet selection

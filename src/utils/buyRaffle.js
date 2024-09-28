@@ -5,25 +5,11 @@ import { Wallet, ethers, Contract } from "ethers";
 import axios from "axios";
 import { getWalletByAddress } from "./bot-utils.js";
 import { decrypt } from "./encryption-utils";
-import axios from "axios";
 
 export const raffleDetail = new Map();
-// Function to handle raffle purchase when wallets are present
+
 export const handleBuyRaffle = async (ctx) => {
   await ctx.scene.enter("buyRafflePaymentScene");
-};
-
-// Function to handle raffle purchase when no wallets are present
-export const handleBuyRaffleWithoutWallet = async (ctx) => {
-  ctx.session.BuyRaffle = true;
-  await ctx.reply(
-    "How would you like to proceed with the purchase?",
-    Markup.inlineKeyboard([
-      [Markup.button.callback("Create wallet", "generate-wallet-seed")],
-      [Markup.button.callback("Import wallet", "import-existing-wallet")],
-      [Markup.button.callback("Metamask application", "metamask_buy_ticket")],
-    ])
-  );
 };
 
 export const buyRafflePaymentScene = new Scenes.BaseScene(
@@ -36,17 +22,25 @@ buyRafflePaymentScene.enter(async (ctx) => {
 
 buyRafflePaymentScene.on("text", async (ctx) => {
   const numberOfTickets = parseInt(ctx.message.text);
-  const sessionWallets = ctx.session.wallets || [];
-  const userId = ctx.message.from.id;
-  ctx.session.userId = userId;
-  // Validate the input
   if (isNaN(numberOfTickets) || numberOfTickets <= 0) {
     await ctx.reply("Please enter a valid number of tickets.");
     return;
   }
-
-  // Store the number of tickets in scene state
   ctx.session.numberOfTickets = numberOfTickets;
+  if (ctx.session.wallets) {
+    await ctx.scene.enter("handleBuyRaffleWithoutWallet");
+  } else {
+    await ctx.scene.enter("handleBuyRaffleWithoutWallet");
+  }
+});
+
+const handleWalletList = new Scenes.BaseScene("handleWalletList");
+
+handleWalletList.enter(async (ctx) => {
+  const numberOfTickets = ctx.session.numberOfTickets;
+  const userId = ctx.message.from.id;
+  ctx.session.userId = userId;
+  const sessionWallets = ctx.session.wallets || [];
 
   // Get raffle details from the store
   const raffleDetails = raffleDetailStore.get(userId);
@@ -65,7 +59,6 @@ buyRafflePaymentScene.on("text", async (ctx) => {
   );
   const totalCost = ticketPrice * numberOfTickets;
   ctx.session.totalCost = totalCost;
-
   // Generate wallet buttons
   const walletButtons = sessionWallets.map((wallet) => [
     Markup.button.callback(
@@ -74,23 +67,37 @@ buyRafflePaymentScene.on("text", async (ctx) => {
     ),
   ]);
 
-  // Add Metamask button at the end
-  walletButtons.push([
-    Markup.button.callback("Metamask application", "metamask_buy_ticket"),
-  ]);
-
   await ctx.reply(
     `The total cost is ${totalCost} ETH. Please confirm your payment method.`,
     Markup.inlineKeyboard(walletButtons)
   );
 });
 
-buyRafflePaymentScene.action(/buy_raffle_wallet_(.+)/, async (ctx) => {
-  const selectedWalletAddress = ctx.match[1];
+// Action handler to capture wallet selection
+handleWalletList.action(/buy_raffle_wallet_(.+)/, async (ctx) => {
+  const selectedWalletAddress = ctx.match[1]; // Extract the wallet address from the callback data
+
+  // Save the selected wallet address in the session
   ctx.session.buyRaffleSelectedWalletAddress = selectedWalletAddress;
 
-  // Move to the contract call scene for processing
+  // Reply with the selected wallet address
+  await ctx.reply(`You have selected the wallet: ${selectedWalletAddress}`);
   await ctx.scene.enter("buyRaffleContractCallScene");
+});
+
+const handleBuyRaffleWithoutWallet = new Scenes.BaseScene(
+  "handleBuyRaffleWithoutWallet"
+);
+handleBuyRaffleWithoutWallet.enter(async (ctx) => {
+  ctx.session.BuyRaffle = true;
+  await ctx.reply(
+    "How would you like to proceed with the purchase?",
+    Markup.inlineKeyboard([
+      [Markup.button.callback("Create wallet", "generate-wallet-seed")],
+      [Markup.button.callback("Import wallet", "import-existing-wallet")],
+      [Markup.button.callback("Metamask application", "metamask_buy_ticket")],
+    ])
+  );
 });
 
 export const buyRaffleContractCallScene = new Scenes.BaseScene(
@@ -113,7 +120,7 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   const numOfTickets = ctx.session.numberOfTickets;
   const totalCost = ctx.session.totalCost;
 
-  await confirmBuyRaffle(
+  const isSuccessful = await confirmBuyRaffle(
     ctx,
     privateKey,
     raffleId,
@@ -122,20 +129,23 @@ buyRaffleContractCallScene.enter(async (ctx) => {
     totalCost
   );
 
-  let botIDAndToken;
-  if (process.env.NODE_ENV === "development") {
-    botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
-  } else {
-    botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (isSuccessful) {
+    // Notify the group about the successful purchase
+    let botIDAndToken;
+    if (process.env.NODE_ENV === "development") {
+      botIDAndToken = process.env.LOCAL_TELEGRAM_BOT_TOKEN;
+    } else {
+      botIDAndToken = process.env.TELEGRAM_BOT_TOKEN;
+    }
+    const message = `Ticket purchased by ${
+      ctx.from.first_name || ctx.from.username
+    } for Raffle ID: ${raffleId}, Number of Tickets: ${numOfTickets} , Cost of Tickets: ${totalCost}`;
+    const telegramApiUrl = `https://api.telegram.org/bot${botIDAndToken}/sendMessage?chat_id=${parseInt(
+      groupId
+    )}&text=${encodeURIComponent(message)}`;
+    await axios.get(telegramApiUrl);
+    await ctx.reply(`Successfully notified the group about the purchase.`);
   }
-  const message = `Ticket purchased by ${
-    ctx.from.first_name || ctx.from.username
-  } for Raffle ID: ${raffleId}, Number of Tickets: ${numOfTickets} , Cost of Tickets: ${totalCost}`;
-  const telegramApiUrl = `https://api.telegram.org/bot${botIDAndToken}/sendMessage?chat_id=${parseInt(
-    groupId
-  )}&text=${encodeURIComponent(message)}`;
-  await axios.get(telegramApiUrl);
-  await ctx.reply(`Successfully notified the group about the purchase.`);
 });
 
 //buy raffle method of smart contract
@@ -190,25 +200,29 @@ const confirmBuyRaffle = async (
     );
 
     ctx.session.mmstate = null; // Clear session state after transaction
+    return true; // Return success status
   } catch (error) {
     if (error.code === ethers.errors.INSUFFICIENT_FUNDS) {
-      console.log("Error: Insufficient funds to complete the transaction.");
+      await ctx.reply("Error: Insufficient funds to complete the transaction.");
     } else if (error.code === ethers.errors.NONCE_EXPIRED) {
-      console.log(
+      await ctx.reply(
         "Error: The transaction nonce has expired. Please try again."
       );
     } else if (error.code === ethers.errors.UNPREDICTABLE_GAS_LIMIT) {
-      console.log(
+      await ctx.reply(
         "Error: Unpredictable gas limit. Please ensure the contract is deployed correctly."
       );
     } else {
-      console.log(`An error occurred: ${error.message}`);
+      await ctx.reply(`An error occurred: ${error.message}`);
     }
     console.error("Error during transaction:", error);
+    return false; // Return failure status
   }
 };
 
 export const buyRafflePaymentScenes = [
   buyRaffleContractCallScene,
   buyRafflePaymentScene,
+  handleBuyRaffleWithoutWallet,
+  handleWalletList,
 ];

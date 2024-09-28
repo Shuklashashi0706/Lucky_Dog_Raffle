@@ -43,7 +43,7 @@ chooseWalletNameStep.on("text", async (ctx) => {
         ctx.session.needsPaymentConfirmation = false;
       } else if (ctx.session.BuyRaffle) {
         await ctx.scene.leave();
-        await handleBuyRaffle(ctx);
+        await ctx.scene.enter("handleWalletList");
         delete ctx.session.BuyRaffle;
       } else {
         await ctx.scene.leave();
