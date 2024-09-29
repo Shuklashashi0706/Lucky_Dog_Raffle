@@ -166,8 +166,6 @@ bot.action("wallets", async (ctx) => {
 });
 
 bot.action(/^metamask_(.*)/, async (ctx) => {
-  console.log("here");
-  console.log(ctx.match[1]);
   await ctx.deleteMessage();
   ctx.session.mmstate = ctx.match[1];
   await handleMMTransactions(ctx);

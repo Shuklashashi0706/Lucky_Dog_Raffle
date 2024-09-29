@@ -34,6 +34,7 @@ const bot_utils_3 = require("./utils/bot-utils");
 const state_1 = require("./utils/state");
 const update_raffle_1 = require("./scenes/update-raffle");
 const buyRaffle_2 = require("./utils/buyRaffle");
+const my_raffle_scene_1 = require("./scenes/my-raffle-scene");
 const mm_sdk_1 = require("./utils/mm-sdk");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -55,6 +56,7 @@ const stage = new telegraf_1.Scenes.Stage([
     ...update_raffle_1.updateRaffleScenes,
     ...buy_raffle_scene_1.buyRaffleScenes,
     ...buyRaffle_1.buyRafflePaymentScenes,
+    my_raffle_scene_1.myRaffle,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -143,8 +145,6 @@ bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
 bot.action(/^metamask_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    console.log("here");
-    console.log(ctx.match[1]);
     yield ctx.deleteMessage();
     ctx.session.mmstate = ctx.match[1];
     yield (0, mm_sdk_1.handleMMTransactions)(ctx);
@@ -222,11 +222,8 @@ bot.action("enter_referral_again", (ctx) => __awaiter(void 0, void 0, void 0, fu
 }));
 bot.action("proceed_without_referral", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     const walletAddress = ctx.session.walletAddress;
-    console.log(walletAddress);
     yield (0, add_raffle_actions_1.handleCreateRaffleWithoutReferral)(ctx, walletAddress);
 }));
-// ----------------- referal code end -----------
-// -------------- create raffle start ------------
 bot.action(/^wallet_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
     const walletAddress = ctx.match[1];
@@ -383,15 +380,15 @@ buy_raffle_scene_2.botEventEmitter.on("dmSent", (_a) => __awaiter(void 0, [_a], 
 }));
 // Action handler for 'sendmessageinprivatedm'
 bot.action("sendmessageinprivatedm", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
-    const message = yield ctx.reply("Checking for wallets.....");
-    if (ctx.session.wallets) {
-        yield ctx.deleteMessage(message.message_id);
-        (0, buyRaffle_2.handleBuyRaffle)(ctx);
-    }
-    else {
-        yield ctx.deleteMessage(message.message_id);
-        (0, buyRaffle_2.handleBuyRaffleWithoutWallet)(ctx);
-    }
+    yield ctx.scene.enter("buyRafflePaymentScene");
+    // const message = await ctx.reply("Checking for wallets.....");
+    // if (ctx.session.wallets) {
+    //   await ctx.deleteMessage(message.message_id);
+    //   handleBuyRaffle(ctx);
+    // } else {
+    //   await ctx.deleteMessage(message.message_id);
+    //   handleBuyRaffleWithoutWallet(ctx);
+    // }
 }));
 // Action handler for wallet selection
 bot.action(/buy_raffle_wallet_(.+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -406,6 +403,11 @@ bot.action(/buy_raffle_wallet_(.+)/, (ctx) => __awaiter(void 0, void 0, void 0, 
     }
 }));
 // ---------------------------- buy raffle end------------------------------
+//--------------------my raffle start -------------------------
+bot.command("my_raffles", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield ctx.scene.enter("myRaffle");
+}));
+//--------------------my raffle end -------------------------
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {
     bot.launch(() => {

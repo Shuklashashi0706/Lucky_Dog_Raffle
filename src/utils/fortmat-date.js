@@ -26,4 +26,5 @@ const formatTime = (input) => {
 
   return futureUnixTime;
 };
+
 export { formatDate, formatTime };

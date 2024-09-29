@@ -7,6 +7,12 @@ import { sendGroupMessage } from "./sendGroupMessage";
 
 const provider = new ethers.providers.JsonRpcProvider(CHAIN["sepolia"].rpcUrl);
 
+export const getWalletBalance = async (walletAddress) => {
+  const balanceWei = await provider.getBalance(walletAddress);
+  const balanceEth = ethers.utils.formatEther(balanceWei);
+  return balanceEth;
+};
+
 const contract = new ethers.Contract(RAFFLE_CONTRACT, RAFFLE_ABI, provider);
 export async function getRaffleDetails(raffleId) {
   try {
@@ -27,27 +33,55 @@ export async function endRaffle(ctx, raffleId) {
   try {
     groupId = ctx.session.createdGroup;
     let wallet;
-    if ((ctx.session.mmstate = "update_raffle")) {
+    if (ctx.session.mmstate === "update_raffle") {
       wallet = ctx.session.updateRaffleSelectedAddress;
     } else {
       const walletAddress = ctx.session.adminWalletAddress;
       const w = getWalletByAddress(ctx, walletAddress);
       const privateKey = decrypt(w.privateKey);
-      wallet = new ethers.Wallet(privateKey, sepoliaProvider);
+      wallet = new ethers.Wallet(privateKey, provider);
     }
     const contractWithSigner = new ethers.Contract(
       RAFFLE_CONTRACT,
       RAFFLE_ABI,
       wallet
     );
-    if ((ctx.session.mmstate = "update_raffle")) {
+    let walletBalance;
+    const gasEstimate = await contractWithSigner.estimateGas.endRaffle(
+      raffleId
+    );
+    if (ctx.session.mmstate !== "update_raffle") {
+      walletBalance = await getWalletBalance(wallet.address);
+      const gasPrice = await wallet.provider.getGasPrice();
+      const transactionCost = ethers.utils.formatEther(
+        gasEstimate.mul(gasPrice)
+      );
+      if (walletBalance < transactionCost) {
+        return await ctx.reply("Not enough balance to sign the transaction");
+      }
+    }
+    if (ctx.session.mmstate === "update_raffle") {
       await ctx.reply("Open MetaMask to sign the transaction...");
     }
-    await contractWithSigner.endRaffle(raffleId, {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Transaction request timed out")),
+        60000
+      )
+    );
+
+    const txPromise = contractWithSigner.endRaffle(raffleId, {
       maxFeePerGas: ethers.utils.parseUnits("30", "gwei"),
       maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
       gasLimit: ethers.utils.hexlify(500000),
     });
+    const transaction = await Promise.race([txPromise, timeoutPromise]);
+
+    await ctx.reply(`Transaction sent: ${transaction.hash}`);
+    await ctx.reply(`Your transaction is getting mined, please wait...`);
+
+    const receipt = await transaction.wait();
+    await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     return 1;
   } catch (error) {
     console.error(`Error ending raffle:${error.message}`);
@@ -67,52 +101,45 @@ export async function updateRaffle(
 ) {
   try {
     let wallet;
-    if ((ctx.session.mmstate = "update_raffle")) {
+    if (ctx.session.mmstate === "update_raffle") {
       wallet = ctx.session.updateRaffleSelectedAddress;
     } else {
       const walletAddress = ctx.session.adminWalletAddress;
       const w = getWalletByAddress(ctx, walletAddress);
       const privateKey = decrypt(w.privateKey);
-      wallet = new ethers.Wallet(privateKey, sepoliaProvider);
+      wallet = new ethers.Wallet(privateKey, provider);
     }
     const contractWithSigner = new ethers.Contract(
       RAFFLE_CONTRACT,
       RAFFLE_ABI,
       wallet
     );
-    const finalMaxTickets =
-      newMaxTickets !== null
-        ? newMaxTickets
-        : ctx.session.raffleDetails.maxTickets;
-    const finalEndTime =
-      newEndTime !== null
-        ? newEndTime
-        : ctx.session.raffleDetails.raffleEndTime;
-    const finalStartTime =
-      newStartTime !== null
-        ? newStartTime
-        : ctx.session.raffleDetails.raffleStartTime;
-    const finalMaxBuyPerWallet =
-      newMaxBuyPerWallet !== null
-        ? newMaxBuyPerWallet
-        : ctx.session.raffleDetails.maxBuyPerWallet;
-    const finalTgOwner =
-      newTgOwner !== null ? newTgOwner : ctx.session.raffleDetails.tgOwner;
-    const finalTgOwnerPercent =
-      newTgOwnerPercent !== null
-        ? newTgOwnerPercent
-        : ctx.session.raffleDetails.tgOwnerPercentage;
-    if ((ctx.session.mmstate = "update_raffle")) {
+
+    let walletBalance;
+    const gasEstimate = await contractWithSigner.estimateGas.endRaffle(
+      raffleId
+    );
+    if (ctx.session.mmstate !== "update_raffle") {
+      walletBalance = await getWalletBalance(wallet.address);
+      const gasPrice = await wallet.provider.getGasPrice();
+      const transactionCost = ethers.utils.formatEther(
+        gasEstimate.mul(gasPrice)
+      );
+      if (walletBalance < transactionCost) {
+        return await ctx.reply("Not enough balance to sign the transaction");
+      }
+    }
+    if (ctx.session.mmstate === "update_raffle") {
       await ctx.reply("Open MetaMask to sign the transaction...");
     }
     const tx = await contractWithSigner.updateRaffle(
       raffleId,
-      finalMaxTickets,
-      finalEndTime,
-      finalStartTime,
-      finalMaxBuyPerWallet,
-      finalTgOwner,
-      finalTgOwnerPercent,
+      newMaxTickets,
+      newEndTime,
+      newStartTime,
+      newMaxBuyPerWallet,
+      newTgOwner,
+      newTgOwnerPercent,
       {
         maxFeePerGas: ethers.utils.parseUnits("30", "gwei"),
         maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
@@ -126,9 +153,11 @@ export async function updateRaffle(
 
     await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     await ctx.reply("Raffle is updated successfully ✨");
+    ctx.scene.leave();
   } catch (error) {
     console.error(error);
     ctx.reply("Failed to update the raffle try again");
+    ctx.scene.leave();
   }
 }
 

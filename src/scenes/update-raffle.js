@@ -11,6 +11,7 @@ const { BaseScene } = Scenes;
 
 export const updateRaffleScene = new BaseScene("updateRaffleScene");
 updateRaffleScene.enter(async (ctx) => {
+  ctx.session.oneUpdate === false;
   const groupId = ctx.session.createdGroup;
   try {
     const raffle = await Raffle.findOne({
@@ -113,34 +114,36 @@ Tickets Sold         : ${raffleDetails.ticketsSold}
   }
 });
 const timeBasedRaffle = new BaseScene("timeBasedRaffle");
-
+let isTimeBasedRaffle;
 timeBasedRaffle.enter(async (ctx) => {
+  isTimeBasedRaffle = ctx.session.timeBasedRaffle;
   if (ctx.session.timeBasedRaffle === false) {
     const isRaffleStarted = checkIfRaffleStarted(ctx);
     if (!isRaffleStarted) {
+      const updateButtons = [
+        [Markup.button.callback("Update start time", "update_start_time")],
+        [
+          Markup.button.callback(
+            "Update max tickets available",
+            "update_max_tickets"
+          ),
+        ],
+        [
+          Markup.button.callback(
+            "Update owner split status",
+            "update_owner_split_status"
+          ),
+        ],
+        [
+          Markup.button.callback(
+            "Update MAX purchase per wallet",
+            "update_max_purchase_per_wallet"
+          ),
+        ],
+      ];
       ctx.reply(
         "What would you like to update?",
-        Markup.inlineKeyboard([
-          [Markup.button.callback("Update start time", "update_start_time")],
-          [
-            Markup.button.callback(
-              "Update max tickets available",
-              "update_max_tickets"
-            ),
-          ],
-          [
-            Markup.button.callback(
-              "Update owner split status",
-              "update_owner_split_status"
-            ),
-          ],
-          [
-            Markup.button.callback(
-              "Update MAX purchase per wallet",
-              "update_max_purchase_per_wallet"
-            ),
-          ],
-        ])
+        Markup.inlineKeyboard(updateButtons)
       );
     } else {
       const ticketsPurchased = ctx.session.raffleDetails.ticketsSold;
@@ -154,9 +157,6 @@ timeBasedRaffle.enter(async (ctx) => {
       } else {
         ctx.reply(
           "The raffle has already started, but there are no tickets purchased yet."
-          // Markup.inlineKeyboard([
-          //   [Markup.button.callback("End Raffle", "end_raffle")],
-          // ])
         );
         ctx.scene.leave();
       }
@@ -164,24 +164,25 @@ timeBasedRaffle.enter(async (ctx) => {
   } else {
     const isRaffleStarted = checkIfRaffleStarted(ctx);
     if (!isRaffleStarted) {
+      const updateButtons = [
+        [Markup.button.callback("Update Start time", "update_start_time")],
+        [Markup.button.callback("Update End time", "update_end_time")],
+        [
+          Markup.button.callback(
+            "Update owner split status",
+            "update_owner_split_status"
+          ),
+        ],
+        [
+          Markup.button.callback(
+            "Update MAX purchase per wallet",
+            "update_max_purchase_per_wallet"
+          ),
+        ],
+      ];
       ctx.reply(
         "What would you like to update?",
-        Markup.inlineKeyboard([
-          [Markup.button.callback("Update Start time", "update_start_time")],
-          [Markup.button.callback("Update End time", "update_end_time")],
-          [
-            Markup.button.callback(
-              "Update owner split status",
-              "update_owner_split_status"
-            ),
-          ],
-          [
-            Markup.button.callback(
-              "Update MAX purchase per wallet",
-              "update_max_purchase_per_wallet"
-            ),
-          ],
-        ])
+        Markup.inlineKeyboard(updateButtons)
       );
     } else {
       const ticketsPurchased = ctx.session.raffleDetails.ticketsSold;
@@ -195,9 +196,6 @@ timeBasedRaffle.enter(async (ctx) => {
       } else {
         ctx.reply(
           "The raffle has already started, but there are no tickets purchased yet."
-          // Markup.inlineKeyboard([
-          //   [Markup.button.callback("End Raffle", "end_raffle")],
-          // ])
         );
         ctx.scene.leave();
       }
@@ -225,13 +223,20 @@ timeBasedRaffle.action(
     "update_max_tickets",
     "update_split_percentage",
     "update_owner_wallet_address",
+    "confirm_update",
+    "cancel_update",
   ],
   async (ctx) => {
     await ctx.deleteMessage();
     ctx.session.updateOption = ctx.callbackQuery.data;
+    const raffleId = ctx.session.raffleId;
     switch (ctx.session.updateOption) {
       case "update_start_time":
-        ctx.reply("Enter new start time in the format Xd Yh (eg 2d 3h):");
+        ctx.reply(
+          `Previous start time ${new Date(
+            ctx.session.raffleDetails.raffleStartTime * 1000
+          ).toUTCString()}\nEnter new start time in the format Xd Yh (eg 2d 3h):`
+        );
         break;
       case "update_end_time":
         ctx.reply("Enter new end time in the format Xd Yh (eg 2d 3h):");
@@ -268,103 +273,118 @@ timeBasedRaffle.action(
         break;
       case "update_owner_wallet_address":
         ctx.reply("Enter new owner wallet address:");
+        break;
+      case "confirm_update":
+        const startTime = ctx.session.newStartTime
+          ? ctx.session.newStartTime
+          : ctx.session.raffleDetails.raffleStartTime;
+        const endTime = ctx.session.newEndTime
+          ? ctx.session.newEndTime
+          : ctx.session.raffleDetails.raffleEndTime;
+        const maxBuyPerWallet = ctx.session.newMaxBuyPerWallet
+          ? ctx.session.newMaxBuyPerWallet
+          : ctx.session.raffleDetails.maxBuyPerWallet;
+        const maxTickets = ctx.session.newMaxTickets
+          ? ctx.session.newMaxTickets
+          : ctx.session.raffleDetails.maxTickets;
+        const splitPercentage = ctx.session.newTgOwnerPercent
+          ? ctx.session.newTgOwnerPercent
+          : ctx.session.raffleDetails.tgOwnerPercentage;
+        const tgOwner = ctx.session.newTgOwner
+          ? ctx.session.newTgOwner
+          : ctx.session.raffleDetails.tgOwner;
+
+        await updateRaffle(
+          ctx,
+          raffleId,
+          maxTickets,
+          endTime,
+          startTime,
+          maxBuyPerWallet,
+          tgOwner,
+          splitPercentage
+        );
+        break;
+      case "cancel_update":
+        break;
     }
   }
 );
-
+const updateButtons = [
+  [Markup.button.callback("Update Start time", "update_start_time")],
+  isTimeBasedRaffle
+    ? [Markup.button.callback("Update End time", "update_end_time")]
+    : [
+        Markup.button.callback(
+          "Update Max tickets available",
+          "update_max_tickets"
+        ),
+      ],
+  [
+    Markup.button.callback(
+      "Update owner split status",
+      "update_owner_split_status"
+    ),
+  ],
+  [
+    Markup.button.callback(
+      "Update MAX purchase per wallet",
+      "update_max_purchase_per_wallet"
+    ),
+  ],
+  [Markup.button.callback("Confirm", "confirm_update")],
+  [Markup.button.callback("Cancel", "cancel_update")],
+];
 timeBasedRaffle.on("text", async (ctx) => {
-  const raffleId = ctx.session.raffleId;
   switch (ctx.session.updateOption) {
     case "update_start_time":
-      const newStartTime = ctx.message.text;
-      await updateRaffle(
-        ctx,
-        raffleId,
-        null,
-        null,
-        formatTime(newStartTime),
-        null,
-        null,
-        null
+      ctx.session.newStartTime = ctx.message.text;
+      await ctx.reply(
+        `Your new raffle start time will be updated to ${new Date(
+          formatTime(ctx.session.newStartTime) * 1000
+        ).toUTCString()}\nWould you like to update something else.?`,
+        Markup.inlineKeyboard(updateButtons)
       );
-      await ctx.deleteMessage();
       break;
     case "update_end_time":
-      const newEndTime = ctx.message.text;
-      await updateRaffle(
-        ctx,
-        raffleId,
-        null,
-        formatTime(newEndTime),
-        null,
-        null,
-        null,
-        null
+      ctx.session.newEndTime = ctx.message.text;
+      await ctx.reply(
+        `Your new raffle end time will be updated to ${new Date(
+          ctx.session.newEndTime * 1000
+        ).toUTCString()}\nWould you like to update something else.?`,
+        Markup.inlineKeyboard(updateButtons)
       );
-      await ctx.deleteMessage();
-      break;
-    case "update_owner_split_status":
-      ctx.reply("What do you wish to update");
       break;
     case "update_max_purchase_per_wallet":
-      const newMaxBuyPerWallet = ctx.message.text;
-      await updateRaffle(
-        ctx,
-        raffleId,
-        null,
-        null,
-        null,
-        Number(newMaxBuyPerWallet),
-        null,
-        null
+      ctx.session.newMaxBuyPerWallet = ctx.message.text;
+      await ctx.reply(
+        `Max buy per wallet will be updated to ${ctx.session.newMaxBuyPerWallet}\nWould you like to update something else.?`,
+        Markup.inlineKeyboard(updateButtons)
       );
-      await ctx.deleteMessage();
       break;
     case "update_max_tickets":
-      const newMaxTickets = ctx.message.text;
-      await updateRaffle(
-        ctx,
-        raffleId,
-        Number(newMaxTickets),
-        null,
-        null,
-        null,
-        null,
-        null
+      ctx.session.newMaxTickets = ctx.message.text;
+      await ctx.reply(
+        `Max buy tickets per raffle will be updated to ${ctx.session.newMaxTickets}\nWould you like to update something else.?`,
+        Markup.inlineKeyboard(updateButtons)
       );
-      await ctx.deleteMessage();
       break;
 
     case "update_split_percentage":
-      const newTgOwnerPercent = ctx.message.text;
-      await updateRaffle(
-        ctx,
-        raffleId,
-        null,
-        null,
-        null,
-        null,
-        null,
-        Number(newTgOwnerPercent)
+      ctx.session.newTgOwnerPercent = ctx.message.text;
+      await ctx.reply(
+        `Split percentage will be updated to ${ctx.session.newTgOwnerPercent}\nWould you like to update something else.?`,
+        Markup.inlineKeyboard(updateButtons)
       );
-      await ctx.deleteMessage();
       break;
     case "update_owner_wallet_address":
-      const newTgOwner = ctx.message.text;
-      await updateRaffle(
-        ctx,
-        raffleId,
-        null,
-        null,
-        null,
-        null,
-        newTgOwner,
-        null
+      ctx.session.newTgOwner = ctx.message.text;
+      await ctx.reply(
+        `Tg owner wallet address will be updated to ${ctx.session.newTgOwner}\nWould you like to update something else.?`,
+        Markup.inlineKeyboard(updateButtons)
       );
-      await ctx.deleteMessage();
       break;
   }
-  ctx.scene.leave();
 });
 
 export const updateRaffleScenes = [updateRaffleScene, timeBasedRaffle];
