@@ -2,18 +2,19 @@ import { Wallet, ethers, Contract } from "ethers";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import Raffle from "../models/raffle";
 import { formatTime } from "./fortmat-date";
+import { getWalletBalance } from "./contract-functions";
 
 const ZERO_WALLET_ADDRESS = "0x0000000000000000000000000000000000000000";
 export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
   );
-  const feeData = await provider.getFeeData();
   let wallet;
+
   if (ctx.session.mmstate === "add_raffle") {
     wallet = privateKey;
     ctx.session.currentWallet = await wallet.getAddress();
-    delete ctx.session.mmstate;
+    // delete ctx.session.mmstate;
   } else {
     wallet = new Wallet(privateKey, provider);
     ctx.session.currentWallet = wallet.address;
@@ -39,7 +40,6 @@ export const createRaffle = async (ctx, privateKey) => {
   const _maxBuyPerWallet = Number(ctx.session.maxTicketsSingleUserCanBuy);
   const _referrer = ZERO_WALLET_ADDRESS;
   const groupId = ctx.session.createdGroup;
-
   const contract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
   async function getRaffleDetails(raffleId) {
     try {
@@ -144,6 +144,28 @@ Good luck to all participants! 🍀
   );
   try {
     await ctx.reply("Your transaction is being processed, please wait...");
+    let walletBalance;
+    const gasEstimate = await contract.estimateGas.createRaffle(
+      _entryCost,
+      _raffleStartTime,
+      _raffleEndTime,
+      _maxTickets,
+      _tgOwner,
+      _tgOwnerPercentage,
+      _maxBuyPerWallet,
+      _referrer
+    );
+    if (ctx.session.mmstate !== "add_raffle") {
+      walletBalance = await getWalletBalance(wallet.address);
+      const gasPrice = await wallet.provider.getGasPrice();
+      const transactionCost = ethers.utils.formatEther(
+        gasEstimate.mul(gasPrice)
+      );
+      if (walletBalance < transactionCost) {
+        return await ctx.reply("Not enough balance to sign the transaction");
+      }
+    }
+
     if (ctx.session.mmstate === "add_raffle") {
       await ctx.reply("Open MetaMask to sign the transaction...");
     }

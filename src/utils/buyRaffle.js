@@ -114,12 +114,16 @@ buyRaffleContractCallScene.enter(async (ctx) => {
 
   const raffleId = raffleDetails.raffleId;
   const groupId = raffleDetails.groupId;
-  const walletAddress = ctx.session.buyRaffleSelectedWalletAddress;
-  const wallet = getWalletByAddress(ctx, walletAddress);
-  const privateKey = decrypt(wallet.privateKey);
+  let privateKey;
+  if ((ctx.session.mmstate = "buy_ticket")) {
+    privateKey = ctx.session.buyRaffleSelectedWalletAddress;
+  } else {
+    const walletAddress = ctx.session.buyRaffleSelectedWalletAddress;
+    const wallet = getWalletByAddress(ctx, walletAddress);
+    privateKey = decrypt(wallet.privateKey);
+  }
   const numOfTickets = ctx.session.numberOfTickets;
   const totalCost = ctx.session.totalCost;
-
   const isSuccessful = await confirmBuyRaffle(
     ctx,
     privateKey,
