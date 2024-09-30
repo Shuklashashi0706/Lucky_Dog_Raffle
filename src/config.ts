@@ -121,6 +121,36 @@ export const RAFFLE_ABI: any[] = [
         name: "prizeAmount",
         type: "uint256",
       },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "serviceWalletEarning",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "referrer",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "referrerEarning",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "tgOwner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "tgOwnerEarning",
+        type: "uint256",
+      },
     ],
     name: "RaffleEnded",
     type: "event",
@@ -237,16 +267,6 @@ export const RAFFLE_ABI: any[] = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "bytes", name: "", type: "bytes" }],
-    name: "checkUpkeep",
-    outputs: [
-      { internalType: "bool", name: "upkeepNeeded", type: "bool" },
-      { internalType: "bytes", name: "performData", type: "bytes" },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
     inputs: [
       { internalType: "uint256", name: "_entryCost", type: "uint256" },
       { internalType: "uint256", name: "_raffleStartTime", type: "uint256" },
@@ -317,13 +337,6 @@ export const RAFFLE_ABI: any[] = [
     type: "function",
   },
   {
-    inputs: [{ internalType: "bytes", name: "performData", type: "bytes" }],
-    name: "performUpkeep",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
     inputs: [],
     name: "raffleCounter",
     outputs: [{ internalType: "uint256", name: "", type: "uint256" }],
@@ -365,11 +378,29 @@ export const RAFFLE_ABI: any[] = [
     type: "function",
   },
   {
-    inputs: [
-      { internalType: "uint256", name: "_raffleId", type: "uint256" },
-      { internalType: "uint256", name: "_maxBuyPerWallet", type: "uint256" },
-    ],
-    name: "setMaxPurchaseLimit",
+    inputs: [{ internalType: "uint256", name: "_percentage", type: "uint256" }],
+    name: "setReferrerFeePercentage",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_percentage", type: "uint256" }],
+    name: "setServiceFeePercentageWithReferrer",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "uint256", name: "_percentage", type: "uint256" }],
+    name: "setServiceFeePercentageWithoutReferrer",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [{ internalType: "address", name: "_wallet", type: "address" }],
+    name: "setServiceWallet",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
@@ -427,4 +458,4 @@ export const RAFFLE_ABI: any[] = [
 ];
 // Define the contract address
 export const RAFFLE_CONTRACT: string =
-  "0xC7EB0dBBd6B0Cf51e51391C9a11481A95c28f33F";
+  "0x8A8b5fc7B8E931Ff5362b4f585F371a9224A49E1";
