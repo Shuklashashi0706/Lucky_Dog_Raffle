@@ -26,7 +26,7 @@ buyRaffleScene.enter(async (ctx) => {
 
   previousMessage = await ctx.reply("🔍 Fetching raffle details...");
 
-  if (ctx.chat.type === "supergroup") {
+  if (ctx.chat.type === "supergroup" || ctx.chat.type === "group") {
     try {
       const raffle = await Raffle.findOne({ groupId, isActive: true });
       console.log(raffle);

@@ -52,7 +52,8 @@ export const handleGroupSelection = async (ctx) => {
         }
 
         ctx.session.createdGroup = groupId;
-
+        const chat = await ctx.telegram.getChat(groupId);
+        ctx.session.createdGroupName = chat.title;
         await ctx.reply(
           `You selected ${selectedGroup.groupUsername} for create/update raffle`
         );

@@ -76,7 +76,6 @@ export async function endRaffle(ctx, raffleId) {
       gasLimit: ethers.utils.hexlify(500000),
     });
     const transaction = await Promise.race([txPromise, timeoutPromise]);
-
     await ctx.reply(`Transaction sent: ${transaction.hash}`);
     await ctx.reply(`Your transaction is getting mined, please wait...`);
 
@@ -166,10 +165,16 @@ contract.on("RaffleEnded", async (raffleId, winner, winnerShare) => {
     const raffle = await Raffle.findOne({
       raffleId: raffleId.toString(),
     });
+
     if (raffle) {
       raffle.isActive = false;
+      raffle.completedTime = Date.now();
       await raffle.save();
-      console.log(`Raffle ${raffleId} updated in the database.`);
+
+      console.log(
+        `Raffle ${raffleId} updated in the database with completed time.`
+      );
+
       const message = `Raffle ${raffleId} has ended\nWinner: ${winner}\nWinner share: ${winnerShare}`;
       sendGroupMessage(groupId, message);
     } else {
@@ -179,6 +184,7 @@ contract.on("RaffleEnded", async (raffleId, winner, winnerShare) => {
     console.error("Error updating raffle:", error);
   }
 });
+
 contract.on(
   "RaffleUpdated",
   async (

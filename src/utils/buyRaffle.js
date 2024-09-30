@@ -28,7 +28,7 @@ buyRafflePaymentScene.on("text", async (ctx) => {
   }
   ctx.session.numberOfTickets = numberOfTickets;
   if (ctx.session.wallets) {
-    await ctx.scene.enter("handleBuyRaffleWithoutWallet");
+    await ctx.scene.enter("handleWalletList");
   } else {
     await ctx.scene.enter("handleBuyRaffleWithoutWallet");
   }
@@ -115,7 +115,7 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   const raffleId = raffleDetails.raffleId;
   const groupId = raffleDetails.groupId;
   let privateKey;
-  if ((ctx.session.mmstate = "buy_ticket")) {
+  if (ctx.session.mmstate === "buy_ticket") {
     privateKey = ctx.session.buyRaffleSelectedWalletAddress;
   } else {
     const walletAddress = ctx.session.buyRaffleSelectedWalletAddress;
@@ -165,6 +165,7 @@ const confirmBuyRaffle = async (
   await ctx.reply(
     `Initiating the purchase of ${numTickets} tickets for Raffle ID: ${raffleId}...`
   );
+  console.log("private key", privateKey);
 
   try {
     const provider = new ethers.providers.JsonRpcProvider(
