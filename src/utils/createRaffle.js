@@ -38,7 +38,9 @@ export const createRaffle = async (ctx, privateKey) => {
     ? Number(ctx.session.splitPercent)
     : 0;
   const _maxBuyPerWallet = Number(ctx.session.maxTicketsSingleUserCanBuy);
-  const _referrer = ZERO_WALLET_ADDRESS;
+  const _referrer = ctx.session.referrer
+    ? ctx.session.referrer
+    : ZERO_WALLET_ADDRESS;
   const groupId = ctx.session.createdGroup;
   const contract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
   async function getRaffleDetails(raffleId) {

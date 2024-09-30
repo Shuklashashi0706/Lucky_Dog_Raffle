@@ -293,9 +293,11 @@ bot.action(/^has_referral_(.*)/, async (ctx) => {
   if (prevMessageState.prevMessage) {
     await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
   }
-  const walletAddress = ctx.match[1]; // Extract wallet address from callback data
-  await handleCreateRaffleWithReferral(ctx, walletAddress);
+  const walletAddress = ctx.match[1];
+  ctx.session.referralSelectedWalletAddress = walletAddress;
+  await ctx.scene.enter("handleCreateRaffleWithReferral");
 });
+
 
 bot.action(/^no_referral_(.*)/, async (ctx) => {
   if (prevMessageState.prevMessage) {
@@ -459,7 +461,7 @@ botEventEmitter.on("dmSent", async ({ userId, ctx, raffleDetails }) => {
 
 // Action handler for 'sendmessageinprivatedm'
 bot.action("sendmessageinprivatedm", async (ctx) => {
-  await ctx.scene.enter("buyRafflePaymentScene")
+  await ctx.scene.enter("buyRafflePaymentScene");
   // const message = await ctx.reply("Checking for wallets.....");
   // if (ctx.session.wallets) {
   //   await ctx.deleteMessage(message.message_id);
@@ -483,6 +485,7 @@ bot.action(/buy_raffle_wallet_(.+)/, async (ctx) => {
     await ctx.scene.enter("buyRaffleContractCallScene");
   }
 });
+
 // ---------------------------- buy raffle end------------------------------
 
 //--------------------my raffle start -------------------------
