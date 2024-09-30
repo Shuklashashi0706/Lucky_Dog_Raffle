@@ -293,13 +293,12 @@ timeBasedRaffle.action(
         const tgOwner = ctx.session.newTgOwner
           ? ctx.session.newTgOwner
           : ctx.session.raffleDetails.tgOwner;
-
         await updateRaffle(
           ctx,
           raffleId,
           maxTickets,
-          endTime,
-          startTime,
+          endTime.toNumber() !== 0 ? formatTime(endTime) : endTime,
+          formatTime(startTime),
           maxBuyPerWallet,
           tgOwner,
           splitPercentage

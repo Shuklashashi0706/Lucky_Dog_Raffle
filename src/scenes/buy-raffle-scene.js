@@ -29,6 +29,7 @@ buyRaffleScene.enter(async (ctx) => {
   if (ctx.chat.type === "supergroup") {
     try {
       const raffle = await Raffle.findOne({ groupId, isActive: true });
+      console.log(raffle)
       if (!raffle) {
         await ctx.deleteMessage(previousMessage.message_id);
         await ctx.reply("🚫 No raffle found for this group.");
