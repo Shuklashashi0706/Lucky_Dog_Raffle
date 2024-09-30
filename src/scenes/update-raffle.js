@@ -305,6 +305,9 @@ timeBasedRaffle.action(
         );
         break;
       case "cancel_update":
+        await ctx.deleteMessage();
+        await ctx.reply("Update operation cancelled");
+        ctx.session.leave();
         break;
     }
   }

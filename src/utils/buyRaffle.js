@@ -124,6 +124,7 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   }
   const numOfTickets = ctx.session.numberOfTickets;
   const totalCost = ctx.session.totalCost;
+  const walletAddress = ctx.session.buyRaffleSelectedWalletAddress;
   const isSuccessful = await confirmBuyRaffle(
     ctx,
     privateKey,

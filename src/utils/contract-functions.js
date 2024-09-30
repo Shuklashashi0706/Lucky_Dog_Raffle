@@ -208,6 +208,20 @@ contract.on(
       );
       if (updatedRaffle) {
         console.log("Raffle updated successfully in the database");
+        const message = `
+Raffle Updated Successfully ✨
+-----------------------------------------
+Raffle ID            : ${raffleId}
+Admin                : ${admin}
+TG Owner             : ${tgOwner}
+Raffle Start Time    : ${raffleStartTime}
+Raffle End Time      : ${raffleEndTime}
+Max Tickets          : ${maxTickets}
+TG Owner Percentage  : ${(tgOwnerPercentage / 100).toFixed(2)}% 
+Max Buy Per Wallet   : ${maxBuyPerWallet}
+-----------------------------------------
+`;
+        sendGroupMessage(groupId, message);
       } else {
         console.error("Failed to update raffle in the database");
       }
