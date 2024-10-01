@@ -149,10 +149,10 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
       { parse_mode: "Markdown" }
     );
     await ctx.answerCbQuery(
-      `📩 Please check your DMs, ${ctx.from.id}, to proceed with your ticket purchase! 🎟️`
+      `📩 Please check your DMs, ${ctx.from.first_name}, to proceed with your ticket purchase! 🎟️`
     );
     const sentMessage = await ctx.reply(
-      `📩 Please check your DMs, ${ctx.from.id}, to proceed with your ticket purchase! 🎟️`
+      `📩 Please check your DMs, ${ctx.from.first_name}, to proceed with your ticket purchase! 🎟️`
     );
 
     // Emit a custom event after sending the DM with user ID and group context
