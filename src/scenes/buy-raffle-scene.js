@@ -14,7 +14,9 @@ export const botEventEmitter = new BotEventEmitter();
 
 let previousMessage;
 export const buyRaffleScene = new BaseScene("buyRaffleScene");
-
+function escapeMarkdown(text) {
+  return text.replace(/([_*[\]()])/g, "\\$1");
+}
 buyRaffleScene.enter(async (ctx) => {
   const groupId = ctx?.chat.id;
   const userId = ctx.message.from.id;
@@ -29,9 +31,15 @@ buyRaffleScene.enter(async (ctx) => {
   if (ctx.chat.type === "supergroup" || ctx.chat.type === "group") {
     try {
       const raffle = await Raffle.findOne({ groupId, isActive: true });
-      console.log(raffle);
       if (!raffle) {
-        await ctx.deleteMessage(previousMessage.message_id);
+        // Ensure previousMessage exists before attempting to delete
+        if (previousMessage && previousMessage.message_id) {
+          try {
+            await ctx.deleteMessage(previousMessage.message_id);
+          } catch (error) {
+            console.error("Failed to delete previous message:", error.message);
+          }
+        }
         await ctx.reply("🚫 No raffle found for this group.");
         return;
       }
@@ -51,10 +59,17 @@ buyRaffleScene.enter(async (ctx) => {
 
       // Check if the raffle is active and within the start time
       if (raffleDetails.isActive && raffleStartTime <= unixTimestamp) {
-        await ctx.deleteMessage(previousMessage.message_id);
+        // Ensure previousMessage exists before attempting to delete
+        if (previousMessage && previousMessage.message_id) {
+          try {
+            await ctx.deleteMessage(previousMessage.message_id);
+          } catch (error) {
+            console.error("Failed to delete previous message:", error.message);
+          }
+        }
 
         let message = `🎉 *Running Raffle Details* 🎉\n\n`;
-        message += `📛 *Title:* ${raffle.raffleTitle}\n`;
+        message += `📛 *Title:* ${escapeMarkdown(raffle.raffleTitle)}\n`;
         message += `🆔 *Raffle ID:* ${raffle.raffleId}\n`;
         message += `💰 *Entry Cost:* ${entryCost} tokens\n\n`;
         message += `⏰ *Start Time:* ${new Date(
@@ -74,7 +89,7 @@ buyRaffleScene.enter(async (ctx) => {
 
         // Save the group name and raffle title in the context session
         ctx.session.groupName = ctx.chat.title || "Group"; // Save group name (default to "Group" if undefined)
-        ctx.session.raffleTitle = raffle.raffleTitle;
+        ctx.session.raffleTitle = escapeMarkdown(raffle.raffleTitle);
 
         // Send message with "Purchase Tickets" button
         await ctx.replyWithMarkdown(
@@ -87,13 +102,29 @@ buyRaffleScene.enter(async (ctx) => {
           ])
         );
       } else {
-        await ctx.deleteMessage(previousMessage.message_id);
+        // Ensure previousMessage exists before attempting to delete
+        if (previousMessage && previousMessage.message_id) {
+          try {
+            await ctx.deleteMessage(previousMessage.message_id);
+          } catch (error) {
+            console.error("Failed to delete previous message:", error.message);
+          }
+        }
         await ctx.reply(
           "⚠️ No active raffles at the moment or the raffle has ended."
         );
       }
     } catch (error) {
-      await ctx.deleteMessage(previousMessage.message_id);
+      if (previousMessage && previousMessage.message_id) {
+        try {
+          await ctx.deleteMessage(previousMessage.message_id);
+        } catch (deleteError) {
+          console.error(
+            "Failed to delete previous message:",
+            deleteError.message
+          );
+        }
+      }
       console.error("Error fetching raffle:", error);
       await ctx.reply(
         "❌ An error occurred while fetching the raffle details. Please try again later."
