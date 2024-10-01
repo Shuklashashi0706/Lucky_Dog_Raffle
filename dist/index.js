@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
+const cors_1 = __importDefault(require("cors"));
 const express_1 = __importDefault(require("express"));
 const telegraf_1 = require("telegraf");
 const bot_utils_1 = require("./utils/bot-utils");
@@ -36,6 +37,8 @@ const update_raffle_1 = require("./scenes/update-raffle");
 const buyRaffle_2 = require("./utils/buyRaffle");
 const my_raffle_scene_1 = require("./scenes/my-raffle-scene");
 const mm_sdk_1 = require("./utils/mm-sdk");
+const global_metrics_1 = require("./controllers/global-metrics");
+const active_raffles_1 = require("./controllers/active-raffles");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -250,8 +253,9 @@ bot.action(/^has_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, func
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
     }
-    const walletAddress = ctx.match[1]; // Extract wallet address from callback data
-    yield (0, add_raffle_actions_1.handleCreateRaffleWithReferral)(ctx, walletAddress);
+    const walletAddress = ctx.match[1];
+    ctx.session.referralSelectedWalletAddress = walletAddress;
+    yield ctx.scene.enter("handleCreateRaffleWithReferral");
 }));
 bot.action(/^no_referral_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -417,11 +421,11 @@ if (process.env.NODE_ENV === "development") {
 else if (process.env.NODE_ENV === "production") {
     const app = (0, express_1.default)();
     app.use(express_1.default.json());
+    app.use((0, cors_1.default)());
     app.use(bot.webhookCallback("/secret-path"));
     bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
-    app.get("/", (req, res) => {
-        res.send("Server is running");
-    });
+    app.get("/api/v1/global-metrics", global_metrics_1.handleGlobalMetrics);
+    app.get("/api/v1/active-raffles", active_raffles_1.handleActiveRaffles);
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);

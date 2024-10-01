@@ -3,6 +3,7 @@ import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import Raffle from "../models/raffle";
 import { formatTime } from "./fortmat-date";
 import { getWalletBalance } from "./contract-functions";
+import GlobalMetrics from "../models/global-metrics";
 
 const ZERO_WALLET_ADDRESS = "0x0000000000000000000000000000000000000000";
 export const createRaffle = async (ctx, privateKey) => {
@@ -134,6 +135,11 @@ Good luck to all participants! 🍀
         try {
           const newRaffle = new Raffle(raffleDetails);
           await newRaffle.save();
+          await GlobalMetrics.updateOne(
+            {},
+            { $inc: { totalRegisteredUsers: 1 } },
+            { upsert: true }
+          );
           console.log("Raffle saved successfully");
 
           const message = await getRaffleDetailsMessage(raffleId);
