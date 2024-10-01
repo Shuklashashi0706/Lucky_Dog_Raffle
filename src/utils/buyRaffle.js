@@ -165,7 +165,6 @@ const confirmBuyRaffle = async (
   await ctx.reply(
     `Initiating the purchase of ${numTickets} tickets for Raffle ID: ${raffleId}...`
   );
-  console.log("private key", privateKey);
 
   try {
     const provider = new ethers.providers.JsonRpcProvider(
