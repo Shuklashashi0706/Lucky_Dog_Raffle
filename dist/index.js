@@ -412,6 +412,39 @@ bot.command("my_raffles", (ctx) => __awaiter(void 0, void 0, void 0, function* (
     yield ctx.scene.enter("myRaffle");
 }));
 //--------------------my raffle end -------------------------
+//--------------history start----------------------------
+bot.command("history", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = ctx.message.from.id;
+        const lastFiveCompletedRaffles = yield raffle_1.default.find({
+            userId: userId,
+            isActive: false,
+        })
+            .sort({ raffleId: -1 }) // Sort by raffleId in descending order
+            .limit(5); // Limit to 5 raffles
+        // Check if any completed raffles were found
+        if (lastFiveCompletedRaffles.length === 0) {
+            yield ctx.reply("❌ No completed raffles found.");
+            return;
+        }
+        // Prepare a text to display the last 5 completed raffles
+        let message = "🎉 *Last 5 Completed Raffles* 🎉\n\n";
+        lastFiveCompletedRaffles.forEach((raffle, index) => {
+            message += `*${index + 1}.*`;
+            message += `🏆 *Raffle ID*: \`${raffle.raffleId}\`\n`;
+            message += `👤 *Winner*: ${raffle.winner || "Unknown"}\n`;
+            message += `🎟️ *Raffle Title*: _${raffle.raffleTitle}_\n`;
+            message += `\n-------------------\n\n`;
+        });
+        // Send the message to the user
+        yield ctx.replyWithMarkdown(message); // Using Markdown formatting
+    }
+    catch (error) {
+        console.error("Error fetching completed raffles:", error);
+        yield ctx.reply("⚠️ An error occurred while fetching the raffle history. Please try again later.");
+    }
+}));
+//--------------history end----------------------------
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {
     bot.launch(() => {

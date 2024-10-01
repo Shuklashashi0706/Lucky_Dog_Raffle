@@ -3,15 +3,19 @@ import mongoose from "mongoose";
 const RaffleSchema = new mongoose.Schema(
   {
     raffleId: {
-      type: String, 
+      type: String,
       required: true,
-      // unique: true,  temporarlily removed 
+      // unique: true,  temporarlily removed
     },
     raffleTitle: {
       type: String,
       required: true,
     },
     groupId: {
+      type: String,
+      required: true,
+    },
+    groupName: {
       type: String,
       required: true,
     },

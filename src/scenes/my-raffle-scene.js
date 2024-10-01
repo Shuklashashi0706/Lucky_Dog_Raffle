@@ -116,15 +116,17 @@ const showActiveRaffles = async (ctx) => {
           raffleId: 1,
           raffleTitle: 1,
           groupId: 1,
+          groupName: 1,
         },
       },
     ]);
+    console.log("raffles", activeRaffles);
 
     if (activeRaffles.length > 0) {
       // Create a list of buttons with each raffle
       const buttons = activeRaffles.map((raffle) => [
         Markup.button.callback(
-          `🎟️ ${raffle.raffleTitle} (Group: ${raffle.groupId})`,
+          `🎟️ ${raffle.raffleTitle} (Group: ${raffle.groupName})`,
           `raffle_${raffle.raffleId}`
         ),
       ]);
@@ -184,7 +186,8 @@ const showCompletedRaffles = async (ctx) => {
           _id: 0, // Exclude _id field
           raffleId: 1, // Include raffleId
           raffleTitle: 1, // Include raffle title
-          groupId: 1, // Include group id
+          groupId: 1,
+          groupName: 1,
         },
       },
     ]);
@@ -194,7 +197,7 @@ const showCompletedRaffles = async (ctx) => {
       // Create a list of buttons with each raffle
       const buttons = completedRaffles.map((raffle) => [
         Markup.button.callback(
-          `🎟️ ${raffle.raffleTitle} (Group: ${raffle.groupId})`,
+          `🎟️ ${raffle.raffleTitle} (Group: ${raffle.groupName})`,
           `raffle_${raffle.raffleId}`
         ),
       ]);

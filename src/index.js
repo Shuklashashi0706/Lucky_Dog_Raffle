@@ -496,6 +496,45 @@ bot.command("my_raffles", async (ctx) => {
 });
 //--------------------my raffle end -------------------------
 
+//--------------history start----------------------------
+bot.command("history", async (ctx) => {
+  try {
+    const userId = ctx.message.from.id;
+    const lastFiveCompletedRaffles = await Raffle.find({
+      userId: userId,
+      isActive: false,
+    })
+      .sort({ raffleId: -1 }) // Sort by raffleId in descending order
+      .limit(5); // Limit to 5 raffles
+
+    // Check if any completed raffles were found
+    if (lastFiveCompletedRaffles.length === 0) {
+      await ctx.reply("❌ No completed raffles found.");
+      return;
+    }
+
+    // Prepare a text to display the last 5 completed raffles
+    let message = "🎉 *Last 5 Completed Raffles* 🎉\n\n";
+    lastFiveCompletedRaffles.forEach((raffle, index) => {
+      message += `*${index + 1}.*`;
+      message += `🏆 *Raffle ID*: \`${raffle.raffleId}\`\n`;
+      message += `👤 *Winner*: ${raffle.winner || "Unknown"}\n`;
+      message += `🎟️ *Raffle Title*: _${raffle.raffleTitle}_\n`;
+      message += `\n-------------------\n\n`;
+    });
+
+    // Send the message to the user
+    await ctx.replyWithMarkdown(message); // Using Markdown formatting
+  } catch (error) {
+    console.error("Error fetching completed raffles:", error);
+    await ctx.reply(
+      "⚠️ An error occurred while fetching the raffle history. Please try again later."
+    );
+  }
+});
+
+//--------------history end----------------------------
+
 connectDB();
 
 if (process.env.NODE_ENV === "development") {

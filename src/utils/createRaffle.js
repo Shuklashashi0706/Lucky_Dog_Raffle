@@ -43,6 +43,7 @@ export const createRaffle = async (ctx, privateKey) => {
     ? ctx.session.referrer
     : ZERO_WALLET_ADDRESS;
   const groupId = ctx.session.createdGroup;
+  const groupName = ctx.session.createdGroupName;
   const contract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
   async function getRaffleDetails(raffleId) {
     try {
@@ -120,6 +121,7 @@ Good luck to all participants! 🍀
           raffleId: raffleId.toNumber(),
           raffleTitle: ctx.session.raffleTitle,
           groupId: groupId,
+          groupName: groupName,
           userId: ctx.from.id,
           botId: 10, //temporary
           entryCost: ethers.utils.formatEther(entryCost),

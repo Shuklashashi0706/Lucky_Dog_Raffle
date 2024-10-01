@@ -6,32 +6,58 @@ import EventEmitter from "events";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import { EventEmitter } from "stream";
 
-//for using raffleDetail buyRaffle
+// for using raffleDetail buyRaffle
 export const raffleDetailStore = new Map();
+
+// Store previous messages per userId
+const previousMessages = new Map();
 
 class BotEventEmitter extends EventEmitter {}
 export const botEventEmitter = new BotEventEmitter();
 
-let previousMessage;
+// Function to delete previous message for a specific user
+async function deletePreviousMessage(ctx, userId) {
+  const previousMessage = previousMessages.get(userId);
+  if (previousMessage && previousMessage.message_id) {
+    try {
+      await ctx.deleteMessage(previousMessage.message_id);
+      previousMessages.delete(userId); // Remove entry after deletion
+    } catch (error) {
+      console.error(
+        `Failed to delete previous message for userId: ${userId}`,
+        error.message
+      );
+    }
+  }
+}
+
+function escapeMarkdown(text) {
+  return text.replace(/([_*[\]()])/g, "\\$1");
+}
+
 export const buyRaffleScene = new BaseScene("buyRaffleScene");
 
 buyRaffleScene.enter(async (ctx) => {
   const groupId = ctx?.chat.id;
-  const userId = ctx.message.from.id;
+  const userId = ctx.message.from.id; // Store userId from ctx.message
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
   );
   const contract = new ethers.Contract(RAFFLE_CONTRACT, RAFFLE_ABI, provider);
 
-  previousMessage = await ctx.reply("🔍 Fetching raffle details...");
+  // Delete previous message for this user
+  await deletePreviousMessage(ctx, userId);
 
-  if (ctx.chat.type === "supergroup") {
+  // Send a new message and store its reference
+  const currentMessage = await ctx.reply("🔍 Fetching raffle details...");
+  previousMessages.set(userId, currentMessage); // Store the current message for this user
+
+  if (ctx.chat.type === "supergroup" || ctx.chat.type === "group") {
     try {
       const raffle = await Raffle.findOne({ groupId, isActive: true });
-      console.log(raffle);
       if (!raffle) {
-        await ctx.deleteMessage(previousMessage.message_id);
+        await deletePreviousMessage(ctx, userId); // Delete if there's no active raffle
         await ctx.reply("🚫 No raffle found for this group.");
         return;
       }
@@ -51,10 +77,10 @@ buyRaffleScene.enter(async (ctx) => {
 
       // Check if the raffle is active and within the start time
       if (raffleDetails.isActive && raffleStartTime <= unixTimestamp) {
-        await ctx.deleteMessage(previousMessage.message_id);
+        await deletePreviousMessage(ctx, userId); // Delete previous message before sending new one
 
         let message = `🎉 *Running Raffle Details* 🎉\n\n`;
-        message += `📛 *Title:* ${raffle.raffleTitle}\n`;
+        message += `📛 *Title:* ${escapeMarkdown(raffle.raffleTitle)}\n`;
         message += `🆔 *Raffle ID:* ${raffle.raffleId}\n`;
         message += `💰 *Entry Cost:* ${entryCost} tokens\n\n`;
         message += `⏰ *Start Time:* ${new Date(
@@ -74,26 +100,27 @@ buyRaffleScene.enter(async (ctx) => {
 
         // Save the group name and raffle title in the context session
         ctx.session.groupName = ctx.chat.title || "Group"; // Save group name (default to "Group" if undefined)
-        ctx.session.raffleTitle = raffle.raffleTitle;
+        ctx.session.raffleTitle = escapeMarkdown(raffle.raffleTitle);
 
         // Send message with "Purchase Tickets" button
-        await ctx.replyWithMarkdown(
+        const newMessage = await ctx.replyWithMarkdown(
           message,
           Markup.inlineKeyboard([
             Markup.button.callback(
               "🎟️ Purchase Tickets",
-              `purchase_tickets_${ctx.from.id}`
+              `purchase_tickets_${userId}` // Ensure userId is passed in the callback
             ),
           ])
         );
+        previousMessages.set(userId, newMessage);
       } else {
-        await ctx.deleteMessage(previousMessage.message_id);
+        await deletePreviousMessage(ctx, userId);
         await ctx.reply(
           "⚠️ No active raffles at the moment or the raffle has ended."
         );
       }
     } catch (error) {
-      await ctx.deleteMessage(previousMessage.message_id);
+      await deletePreviousMessage(ctx, userId);
       console.error("Error fetching raffle:", error);
       await ctx.reply(
         "❌ An error occurred while fetching the raffle details. Please try again later."
@@ -108,10 +135,12 @@ buyRaffleScene.enter(async (ctx) => {
 
 // Action handler for "Purchase Tickets" button
 buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
-  const userId = ctx.match[1]; // Extract the user ID from the callback data
+  const userId = ctx.from.id; // Extract the user ID from ctx.from (not callback)
   const groupName = ctx.session.groupName || "Group"; // Get the group name from the session
   const raffleTitle = ctx.session.raffleTitle || "Raffle"; // Get the raffle title from the session
   const raffleDetails = ctx.session.raffleDetails;
+  await deletePreviousMessage(ctx, userId); // Delete previous message for this user
+
   try {
     // Send a private message to the user with the raffle details
     await ctx.telegram.sendMessage(
@@ -120,10 +149,10 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
       { parse_mode: "Markdown" }
     );
     await ctx.answerCbQuery(
-      `📩 Please check your DMs,${ctx.from.id}, to proceed with your ticket purchase! 🎟️`
+      `📩 Please check your DMs, ${ctx.from.first_name}, to proceed with your ticket purchase! 🎟️`
     );
     const sentMessage = await ctx.reply(
-      `📩 Please check your DMs,${ctx.from.id}, to proceed with your ticket purchase! 🎟️`
+      `📩 Please check your DMs, ${ctx.from.first_name}, to proceed with your ticket purchase! 🎟️`
     );
 
     // Emit a custom event after sending the DM with user ID and group context
