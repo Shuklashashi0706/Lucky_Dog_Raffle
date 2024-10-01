@@ -5,6 +5,7 @@ import { Wallet, ethers, Contract } from "ethers";
 import axios from "axios";
 import { getWalletByAddress } from "./bot-utils.js";
 import { decrypt } from "./encryption-utils";
+import GlobalMetrics from "../models/global-metrics.js";
 
 export const raffleDetail = new Map();
 
@@ -135,6 +136,11 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   );
 
   if (isSuccessful) {
+    await GlobalMetrics.updateOne(
+      {},
+      { $inc: { totalRafflesCreated: numOfTickets } },
+      { upsert: true }
+    );
     // Notify the group about the successful purchase
     let botIDAndToken;
     if (process.env.NODE_ENV === "development") {

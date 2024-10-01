@@ -1,4 +1,5 @@
 import dotenv from "dotenv";
+import cors from "cors";
 import express from "express";
 import { Telegraf, session, Scenes, Markup } from "telegraf";
 import { menuCommand, walletsCommand } from "./utils/bot-utils";
@@ -38,6 +39,8 @@ import {
 } from "./utils/buyRaffle";
 import { myRaffle } from "./scenes/my-raffle-scene";
 import { handleMMTransactions } from "./utils/mm-sdk";
+import { handleGlobalMetrics } from "./controllers/global-metrics";
+import { handleActiveRaffles } from "./controllers/active-raffles";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -541,12 +544,11 @@ if (process.env.NODE_ENV === "development") {
 } else if (process.env.NODE_ENV === "production") {
   const app = express();
   app.use(express.json());
+  app.use(cors());
   app.use(bot.webhookCallback("/secret-path"));
   bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
-
-  app.get("/", (req, res) => {
-    res.send("Server is running");
-  });
+  app.get("/api/v1/global-metrics", handleGlobalMetrics);
+  app.get("/api/v1/active-raffles", handleActiveRaffles);
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
