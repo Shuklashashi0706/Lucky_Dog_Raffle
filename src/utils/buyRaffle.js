@@ -5,7 +5,7 @@ import { Wallet, ethers, Contract } from "ethers";
 import axios from "axios";
 import { getWalletByAddress } from "./bot-utils.js";
 import { decrypt } from "./encryption-utils";
-import GlobalMetrics from "../models/global-metrics.js";
+import GlobalMetrics from "../models/global-metrics";
 
 export const raffleDetail = new Map();
 
