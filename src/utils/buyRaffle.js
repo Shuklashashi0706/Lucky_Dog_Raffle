@@ -39,7 +39,13 @@ const handleWalletList = new Scenes.BaseScene("handleWalletList");
 
 handleWalletList.enter(async (ctx) => {
   const numberOfTickets = ctx.session.numberOfTickets;
-  const userId = ctx.message.from.id;
+  let userId;
+  if (ctx.message) {
+    userId = ctx.message.from.id;
+  } else {
+    userId = ctx.update.callback_query.from.id;
+  }
+
   ctx.session.userId = userId;
   const sessionWallets = ctx.session.wallets || [];
 
@@ -60,18 +66,20 @@ handleWalletList.enter(async (ctx) => {
   );
   const totalCost = ticketPrice * numberOfTickets;
   ctx.session.totalCost = totalCost;
-  // Generate wallet buttons
-  const walletButtons = sessionWallets.map((wallet) => [
-    Markup.button.callback(
-      wallet.address,
-      `buy_raffle_wallet_${wallet.address}`
-    ),
-  ]);
-
-  await ctx.reply(
-    `The total cost is ${totalCost} ETH. Please confirm your payment method.`,
-    Markup.inlineKeyboard(walletButtons)
-  );
+  if (ctx.session.mmstate === "buy_ticket") {
+    ctx.scene.enter("buyRaffleContractCallScene");
+  } else {
+    const walletButtons = sessionWallets.map((wallet) => [
+      Markup.button.callback(
+        wallet.address,
+        `buy_raffle_wallet_${wallet.address}`
+      ),
+    ]);
+    await ctx.reply(
+      `The total cost is ${totalCost} ETH. Please confirm your payment method.`,
+      Markup.inlineKeyboard(walletButtons)
+    );
+  }
 });
 
 // Action handler to capture wallet selection
@@ -96,7 +104,12 @@ handleBuyRaffleWithoutWallet.enter(async (ctx) => {
     Markup.inlineKeyboard([
       [Markup.button.callback("Create wallet", "generate-wallet-seed")],
       [Markup.button.callback("Import wallet", "import-existing-wallet")],
-      [Markup.button.callback("Metamask application", "metamask_buy_ticket")],
+      [
+        Markup.button.callback(
+          "Metamask Application (BETA)",
+          "metamask_buy_ticket"
+        ),
+      ],
     ])
   );
 });
@@ -121,11 +134,19 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   } else {
     const walletAddress = ctx.session.buyRaffleSelectedWalletAddress;
     const wallet = getWalletByAddress(ctx, walletAddress);
-    privateKey = decrypt(wallet.privateKey);
+    const provider = new ethers.providers.JsonRpcProvider(
+      CHAIN["sepolia"].rpcUrl
+    );
+    privateKey = new Wallet(decrypt(wallet.privateKey), provider);
   }
   const numOfTickets = ctx.session.numberOfTickets;
   const totalCost = ctx.session.totalCost;
-  const walletAddress = ctx.session.buyRaffleSelectedWalletAddress;
+  let walletAddress;
+  if (ctx.session.mmstate === "buy_ticket") {
+    walletAddress = ctx.session.buyRaffleSelectedWalletAddress.getAddress();
+  } else {
+    walletAddress = ctx.session.buyRaffleSelectedWalletAddress;
+  }
   const isSuccessful = await confirmBuyRaffle(
     ctx,
     privateKey,
@@ -173,14 +194,14 @@ const confirmBuyRaffle = async (
   );
 
   try {
-    const provider = new ethers.providers.JsonRpcProvider(
-      CHAIN["sepolia"].rpcUrl
-    );
-    let wallet = new Wallet(privateKey, provider);
-    ctx.session.currentWallet = wallet;
+    ctx.session.currentWallet = privateKey;
 
     // Create a contract instance
-    const raffleContract = new Contract(RAFFLE_CONTRACT, RAFFLE_ABI, wallet);
+    const raffleContract = new Contract(
+      RAFFLE_CONTRACT,
+      RAFFLE_ABI,
+      privateKey
+    );
 
     await ctx.reply("Your transaction is being processed, please wait...");
 
