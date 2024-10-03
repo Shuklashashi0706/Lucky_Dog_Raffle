@@ -5,7 +5,7 @@ const RaffleSchema = new mongoose.Schema(
     raffleId: {
       type: String,
       required: true,
-      // unique: true,  temporarlily removed
+      unique: true,
     },
     raffleTitle: {
       type: String,
@@ -14,6 +14,7 @@ const RaffleSchema = new mongoose.Schema(
     groupId: {
       type: String,
       required: true,
+      unique: true,  // to make only each raffle associated with single group
     },
     groupName: {
       type: String,

@@ -423,10 +423,20 @@ bot.action(/^SELECT_GROUP_/, handleGroupSelection);
 
 bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
   await ctx.deleteMessage();
-  await ctx.reply("Add Raffle option selected");
+
   const groupId = ctx.match[1];
-  ctx.session.groupId = groupId;
-  ctx.scene.enter("raffleScene");
+
+  const existingRaffle = await Raffle.findOne({ groupId: groupId });
+
+  if (existingRaffle) {
+    await ctx.reply(
+      "Raffle already exists and you can have max 1 raffle in a group."
+    );
+  } else {
+    await ctx.reply("Add Raffle option selected");
+    ctx.session.groupId = groupId;
+    ctx.scene.enter("raffleScene");
+  }
 });
 
 bot.action(/^UPDATE_RAFFLE_(.*)/, async (ctx) => {
