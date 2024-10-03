@@ -426,12 +426,13 @@ bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
 
   const groupId = ctx.match[1];
 
-  const existingRaffle = await Raffle.findOne({ groupId: groupId });
+  const existingRaffle = await Raffle.findOne({
+    groupId: groupId,
+    isActive: true,
+  });
 
   if (existingRaffle) {
-    await ctx.reply(
-      "Raffle already exists and you can have max 1 raffle in a group."
-    );
+    await ctx.reply("Raffle already exists and running in selected group.");
   } else {
     await ctx.reply("Add Raffle option selected");
     ctx.session.groupId = groupId;
