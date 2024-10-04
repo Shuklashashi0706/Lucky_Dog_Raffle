@@ -41,6 +41,8 @@ import { myRaffle } from "./scenes/my-raffle-scene";
 import { handleMMTransactions } from "./utils/mm-sdk";
 import { handleGlobalMetrics } from "./controllers/global-metrics";
 import { handleActiveRaffles } from "./controllers/active-raffles";
+import { handleCompletedRaffles } from "./controllers/completed_raffles";
+import { handleRevenueDistribution } from "./controllers/revenuedistribution";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -560,6 +562,8 @@ if (process.env.NODE_ENV === "development") {
   bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
   app.get("/api/v1/global-metrics", handleGlobalMetrics);
   app.get("/api/v1/active-raffles", handleActiveRaffles);
+  app.get("/api/v1/completed-raffles", handleCompletedRaffles);
+  app.get("/api/v1/revenue-distribution", handleRevenueDistribution);
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

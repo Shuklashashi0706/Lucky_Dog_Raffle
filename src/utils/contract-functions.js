@@ -4,7 +4,7 @@ import { getWalletByAddress } from "./bot-utils";
 import { decrypt } from "./encryption-utils";
 import Raffle from "../models/raffle";
 import { sendGroupMessage } from "./sendGroupMessage";
-
+import { TotalRevenueDistributionModel } from "../models/total_revenue";
 const provider = new ethers.providers.JsonRpcProvider(CHAIN["sepolia"].rpcUrl);
 
 export const getWalletBalance = async (walletAddress) => {
@@ -33,6 +33,10 @@ export async function endRaffle(ctx, raffleId) {
   try {
     groupId = ctx.session.createdGroup;
     let wallet;
+
+    // Notify the user that the process is starting
+    await ctx.reply("Starting the process to end the raffle...");
+
     if (ctx.session.mmstate === "update_raffle") {
       wallet = ctx.session.updateRaffleSelectedAddress;
     } else {
@@ -41,28 +45,42 @@ export async function endRaffle(ctx, raffleId) {
       const privateKey = decrypt(w.privateKey);
       wallet = new ethers.Wallet(privateKey, provider);
     }
+
     const contractWithSigner = new ethers.Contract(
       RAFFLE_CONTRACT,
       RAFFLE_ABI,
       wallet
     );
-    let walletBalance;
+
+    // Notify the user that gas estimation is in progress
+    await ctx.reply("Estimating gas for ending the raffle...");
+
     const gasEstimate = await contractWithSigner.estimateGas.endRaffle(
       raffleId
     );
+
     if (ctx.session.mmstate !== "update_raffle") {
-      walletBalance = await getWalletBalance(wallet.address);
+      const walletBalance = await getWalletBalance(wallet.address);
       const gasPrice = await wallet.provider.getGasPrice();
       const transactionCost = ethers.utils.formatEther(
         gasEstimate.mul(gasPrice)
       );
+
+      // Notify the user if the balance is insufficient
       if (walletBalance < transactionCost) {
-        return await ctx.reply("Not enough balance to sign the transaction");
+        return await ctx.reply("Not enough balance to sign the transaction.");
       }
     }
+
     if (ctx.session.mmstate === "update_raffle") {
-      await ctx.reply("Open MetaMask to sign the transaction...");
+      await ctx.reply("Please open MetaMask to sign the transaction...");
+    } else {
+      await ctx.reply("Signing the transaction to end the raffle...");
     }
+
+    // Notify the user that the transaction is being sent
+    await ctx.reply("Sending the transaction to the network...");
+
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(
         () => reject(new Error("Transaction request timed out")),
@@ -75,15 +93,26 @@ export async function endRaffle(ctx, raffleId) {
       maxPriorityFeePerGas: ethers.utils.parseUnits("25", "gwei"),
       gasLimit: ethers.utils.hexlify(500000),
     });
-    const transaction = await Promise.race([txPromise, timeoutPromise]);
-    await ctx.reply(`Transaction sent: ${transaction.hash}`);
-    await ctx.reply(`Your transaction is getting mined, please wait...`);
 
+    // Wait for the transaction hash or timeout
+    const transaction = await Promise.race([txPromise, timeoutPromise]);
+
+    // Notify the user that the transaction has been sent, along with the transaction hash
+    await ctx.reply(`Transaction sent: ${transaction.hash}`);
+    await ctx.reply("Your transaction is being mined, please wait...");
+
+    // Wait for the transaction to be mined
     const receipt = await transaction.wait();
-    await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
+
+    // Notify the user that the transaction has been successfully mined
+    await ctx.reply(
+      `Transaction mined successfully: ${receipt.transactionHash}`
+    );
+
     return 1;
   } catch (error) {
-    console.error(`Error ending raffle:${error.message}`);
+    console.error(`Error ending raffle: ${error.message}`);
+    await ctx.reply(`Error: ${error.message}`);
     return 0;
   }
 }
@@ -160,30 +189,82 @@ export async function updateRaffle(
   }
 }
 
-contract.on("RaffleEnded", async (raffleId, winner, winnerShare) => {
-  try {
-    const raffle = await Raffle.findOne({
-      raffleId: raffleId.toString(),
-    });
+// Listen for the RaffleEnded event and update both Raffle and TotalRevenueDistribution documents
+contract.on(
+  "RaffleEnded",
+  async (
+    raffleId,
+    winner,
+    winnerShare,
+    serviceFee,
+    referrer,
+    referrerFee,
+    tgOwner,
+    tgOwnerShare
+  ) => {
+    try {
+      // 1. Log the event data to the user
+      console.log(`
+            Raffle Ended:
+            - Raffle ID: ${raffleId}
+            - Winner: ${winner}
+            - Winner's Share: ${ethers.utils.formatEther(winnerShare)} ETH
+            - Service Fee: ${ethers.utils.formatEther(serviceFee)} ETH
+            - Referrer: ${referrer}
+            - Referrer Fee: ${ethers.utils.formatEther(referrerFee)} ETH
+            - TG Owner: ${tgOwner}
+            - TG Owner Share: ${ethers.utils.formatEther(tgOwnerShare)} ETH
+          `);
 
-    if (raffle) {
-      raffle.isActive = false;
-      raffle.completedTime = Date.now();
-      await raffle.save();
-
-      console.log(
-        `Raffle ${raffleId} updated in the database with completed time.`
+      // 2. Update the TotalRevenueDistribution model
+      const platformRevenue = parseFloat(ethers.utils.formatEther(serviceFee));
+      const tgOwnerRevenue = parseFloat(ethers.utils.formatEther(tgOwnerShare));
+      const referrerEarnings = parseFloat(
+        ethers.utils.formatEther(referrerFee)
       );
 
-      const message = `Raffle ${raffleId} has ended\nWinner: ${winner}\nWinner share: ${winnerShare}`;
-      sendGroupMessage(groupId, message);
-    } else {
-      console.log(`Raffle with ID ${raffleId} not found in the database.`);
+      // Find and update the existing TotalRevenueDistribution record
+      const revenueDistribution =
+        await TotalRevenueDistributionModel.findOneAndUpdate(
+          {},
+          {
+            $inc: {
+              platformRevenue: platformRevenue,
+              tgOwnerRevenue: tgOwnerRevenue,
+              referrerEarnings: referrerEarnings,
+            },
+          },
+          { new: true, upsert: true } // Create the document if it doesn't exist
+        );
+
+      // 3. Update the Raffle model with the raffle completion data
+      const raffle = await Raffle.findOne({
+        raffleId: raffleId.toString(),
+      });
+
+      if (raffle) {
+        raffle.isActive = false;
+        raffle.completedTime = Date.now(); // Marking raffle as completed
+        await raffle.save();
+
+        console.log(
+          `Raffle ${raffleId} updated in the database with completed time.`
+        );
+
+        const message = `Raffle ${raffleId} has ended\nWinner: ${winner}\nWinner's share: ${ethers.utils.formatEther(
+          winnerShare
+        )} ETH`;
+        sendGroupMessage(groupId, message); // Send a message to the group
+      } else {
+        console.log(`Raffle with ID ${raffleId} not found in the database.`);
+      }
+    } catch (error) {
+      console.error(
+        `Error updating revenue distribution or raffle: ${error.message}`
+      );
     }
-  } catch (error) {
-    console.error("Error updating raffle:", error);
   }
-});
+);
 
 contract.on(
   "RaffleUpdated",

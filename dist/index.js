@@ -39,6 +39,8 @@ const my_raffle_scene_1 = require("./scenes/my-raffle-scene");
 const mm_sdk_1 = require("./utils/mm-sdk");
 const global_metrics_1 = require("./controllers/global-metrics");
 const active_raffles_1 = require("./controllers/active-raffles");
+const completed_raffles_1 = require("./controllers/completed_raffles");
+const revenuedistribution_1 = require("./controllers/revenuedistribution");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -351,10 +353,19 @@ bot.on("left_chat_member", (ctx) => __awaiter(void 0, void 0, void 0, function* 
 bot.action(/^SELECT_GROUP_/, add_raffle_actions_1.handleGroupSelection);
 bot.action(/^ADD_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
-    yield ctx.reply("Add Raffle option selected");
     const groupId = ctx.match[1];
-    ctx.session.groupId = groupId;
-    ctx.scene.enter("raffleScene");
+    const existingRaffle = yield raffle_1.default.findOne({
+        groupId: groupId,
+        isActive: true,
+    });
+    if (existingRaffle) {
+        yield ctx.reply("Raffle already exists and running in selected group.");
+    }
+    else {
+        yield ctx.reply("Add Raffle option selected");
+        ctx.session.groupId = groupId;
+        ctx.scene.enter("raffleScene");
+    }
 }));
 bot.action(/^UPDATE_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
@@ -459,6 +470,8 @@ else if (process.env.NODE_ENV === "production") {
     bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
     app.get("/api/v1/global-metrics", global_metrics_1.handleGlobalMetrics);
     app.get("/api/v1/active-raffles", active_raffles_1.handleActiveRaffles);
+    app.get("/api/v1/completed-raffles", completed_raffles_1.handleCompletedRaffles);
+    app.get("/api/v1/revenue-distribution", revenuedistribution_1.handleRevenueDistribution);
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
