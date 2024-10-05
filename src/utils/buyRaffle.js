@@ -6,7 +6,7 @@ import axios from "axios";
 import { getWalletByAddress } from "./bot-utils.js";
 import { decrypt } from "./encryption-utils";
 import GlobalMetrics from "../models/global-metrics";
-
+import { getWalletBalance } from "./contract-functions.js";
 export const raffleDetail = new Map();
 
 export const handleBuyRaffle = async (ctx) => {
@@ -69,12 +69,26 @@ handleWalletList.enter(async (ctx) => {
   if (ctx.session.mmstate === "buy_ticket") {
     ctx.scene.enter("buyRaffleContractCallScene");
   } else {
-    const walletButtons = sessionWallets.map((wallet) => [
-      Markup.button.callback(
-        wallet.address,
-        `buy_raffle_wallet_${wallet.address}`
-      ),
-    ]);
+    const walletButtons = await Promise.all(
+      sessionWallets.map(async (wallet) => {
+        const balance = await getWalletBalance(wallet.address);
+        const formattedAddress = `${wallet.address.slice(
+          0,
+          5
+        )}...${wallet.address.slice(-4)}`;
+        const formattedBalance = balance
+          ? `(${parseFloat(balance).toFixed(2)} ETH)`
+          : "(0.00 ETH)";
+
+        return [
+          Markup.button.callback(
+            `${formattedAddress} ${formattedBalance}`,
+            `buy_raffle_wallet_${wallet.address}`
+          ),
+        ];
+      })
+    );
+
     await ctx.reply(
       `The total cost is ${totalCost} ETH. Please confirm your payment method.`,
       Markup.inlineKeyboard(walletButtons)

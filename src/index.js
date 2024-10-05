@@ -68,7 +68,10 @@ const stage = new Scenes.Stage([
 ]);
 
 bot.use(session());
+
+
 bot.use(stage.middleware());
+
 
 // Function to check if a user has blocked the bot
 async function checkBlockedUser(ctx, userId) {
@@ -105,7 +108,7 @@ bot.start(async (ctx) => {
       [
         Markup.button.url(
           "Add bot to group",
-          `https://t.me/${ctx.botInfo.username}?startgroup=true`
+          `https://t.me/${ctx.botInfo.username}?startgroup=true&admin=change_info+delete_messages+restrict_members+invite_users+pin_messages+manage_topics+manage_video_chats+promote_members`
         ),
       ],
       [

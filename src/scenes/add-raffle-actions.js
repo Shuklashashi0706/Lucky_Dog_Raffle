@@ -15,6 +15,7 @@ import {
 import { getWalletByAddress } from "../utils/bot-utils";
 import { createRaffle } from "../utils/createRaffle";
 import { decrypt } from "../utils/encryption-utils";
+import { getWalletBalance } from "../utils/contract-functions";
 export const raffleScene = new BaseScene("raffleScene");
 let previousMessage;
 
@@ -103,8 +104,8 @@ export const handleAddRaffle = async (ctx) => {
       const groups = await Group.find({ userId });
 
       const addBotDeepLink = Markup.button.url(
-        "Add Bot to Group",
-        `https://t.me/${ctx.botInfo.username}?startgroup=true`
+        "Add bot to group",
+        `https://t.me/${ctx.botInfo.username}?startgroup=true&admin=change_info+delete_messages+restrict_members+invite_users+pin_messages+manage_topics+manage_video_chats+promote_members`
       );
 
       if (groups.length === 0) {
@@ -345,44 +346,85 @@ rafflePurposeScene.on("text", (ctx) => {
 });
 
 export const confirmScene = new BaseScene("confirmScene");
-confirmScene.enter((ctx) => {
-  const details = `
+
+confirmScene.enter(async (ctx) => {
+  try {
+    const parseTimeToUTC = (timeString) => {
+      const now = new Date();
+      const [days, hours] = timeString.split(" ").map((part) => parseInt(part));
+      const totalHours = days * 24 + hours;
+      const futureDate = new Date(now.getTime() + totalHours * 60 * 60 * 1000);
+      return futureDate.toUTCString();
+    };
+
+    let startTimeUTC;
+    if (ctx.session.startTime === "now") {
+      startTimeUTC = parseTimeToUTC("0d 0h");
+    } else {
+      startTimeUTC = parseTimeToUTC(ctx.session.startTime);
+    }
+    parseTimeToUTC(ctx.session.startTime);
+    let raffleLimitUTC;
+    if (ctx.session.raffleLimitType === "time_based") {
+      raffleLimitUTC = parseTimeToUTC(ctx.session.raffleLimit);
+    } else {
+      raffleLimitUTC = ctx.session.raffleLimit;
+    }
+
+    const details = `
 Raffle Title: ${ctx.session.raffleTitle}
-Ticket Price: ${ctx.session.ticketPrice}ETH
-Split: ${
-    ctx.session.split
-      ? `Yes (${ctx.session.splitPercent}%)\nSplit Address:${ctx.session.walletAddress}`
-      : "No"
-  }
-Raffle Start Time: ${ctx.session.startTime}
-Raffle Limit: ${ctx.session.raffleLimit}
+Ticket Price: ${ctx.session.ticketPrice}
+ETH Split: ${
+      ctx.session.split
+        ? `Yes (${ctx.session.splitPercent}%)\nSplit Address: ${ctx.session.walletAddress}`
+        : "No"
+    }
+Raffle Start Time: ${startTimeUTC}
+Raffle Limit: ${raffleLimitUTC}
 Raffle Description/Purpose: ${ctx.session.raffleDescription}
-  `;
-  ctx.reply(
-    `Confirm raffle details:\n${details}`,
-    Markup.inlineKeyboard([
-      [Markup.button.callback("☑️ Confirm and Create", "confirm")],
-      [Markup.button.callback("❌ Cancel", "cancel")],
-    ])
-  );
+    `;
+
+    await ctx.reply(
+      `Confirm raffle details:\n${details}`,
+      Markup.inlineKeyboard([
+        [Markup.button.callback("☑️ Confirm and Create", "confirm")],
+        [Markup.button.callback("❌ Cancel", "cancel")],
+      ])
+    );
+  } catch (error) {
+    console.error("Error confirming raffle details:", error);
+    await ctx.reply(
+      "There was an error displaying raffle details. Please try again."
+    );
+  }
 });
 
 confirmScene.action("confirm", async (ctx) => {
   await ctx.deleteMessage();
   const wallets = ctx.session.wallets;
+
   if (wallets && wallets.length) {
-    const walletButtons = wallets.map((wallet, index) => {
-      const formattedAddress = `${wallet.address.slice(
-        0,
-        5
-      )}...${wallet.address.slice(-4)}`;
-      return [
-        {
-          text: formattedAddress,
-          callback_data: `wallet_${wallet.address}`,
-        },
-      ];
-    });
+    const walletButtons = await Promise.all(
+      wallets.map(async (wallet, index) => {
+        const balance = await getWalletBalance(wallet.address);
+        const formattedAddress = `${wallet.address.slice(
+          0,
+          5
+        )}...${wallet.address.slice(-4)}`;
+
+        const formattedBalance = balance
+          ? `(${parseFloat(balance).toFixed(2)} ETH)`
+          : "(0.00 ETH)";
+
+        return [
+          {
+            text: `${formattedAddress} ${formattedBalance}`,
+            callback_data: `wallet_${wallet.address}`,
+          },
+        ];
+      })
+    );
+
     walletButtons.push([
       {
         text: "Metamask application",
