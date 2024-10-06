@@ -259,6 +259,7 @@ startTimeScene.on("text", (ctx) => {
   if (!validation.success) {
     return ctx.reply(validation.error.errors[0].message);
   }
+  
 
   ctx.session.startTime = input;
   ctx.scene.enter("raffleLimitScene");
