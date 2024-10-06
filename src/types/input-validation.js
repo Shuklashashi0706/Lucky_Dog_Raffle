@@ -1,4 +1,5 @@
 const { z } = require("zod");
+import { ethers } from "ethers";
 
 export const raffleTitleSchema = z
   .string()

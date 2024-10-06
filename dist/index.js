@@ -39,6 +39,9 @@ const my_raffle_scene_1 = require("./scenes/my-raffle-scene");
 const mm_sdk_1 = require("./utils/mm-sdk");
 const global_metrics_1 = require("./controllers/global-metrics");
 const active_raffles_1 = require("./controllers/active-raffles");
+const completed_raffles_1 = require("./controllers/completed_raffles");
+const revenuedistribution_1 = require("./controllers/revenuedistribution");
+const raffle_pool_1 = require("./controllers/raffle-pool");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -97,7 +100,7 @@ bot.start((ctx) => __awaiter(void 0, void 0, void 0, function* () {
         // Create inline keyboard buttons
         const keyboard = telegraf_1.Markup.inlineKeyboard([
             [
-                telegraf_1.Markup.button.url("Add bot to group", `https://t.me/${ctx.botInfo.username}?startgroup=true`),
+                telegraf_1.Markup.button.url("Add bot to group", `https://t.me/${ctx.botInfo.username}?startgroup=true&admin=change_info+delete_messages+restrict_members+invite_users+pin_messages+manage_topics+manage_video_chats+promote_members`),
             ],
             [
                 telegraf_1.Markup.button.callback("Create/Update a raffle", "CREATE_UPDATE_RAFFLE"),
@@ -470,6 +473,9 @@ else if (process.env.NODE_ENV === "production") {
     bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
     app.get("/api/v1/global-metrics", global_metrics_1.handleGlobalMetrics);
     app.get("/api/v1/active-raffles", active_raffles_1.handleActiveRaffles);
+    app.get("/api/v1/completed-raffles", completed_raffles_1.handleCompletedRaffles);
+    app.get("/api/v1/revenue-distribution", revenuedistribution_1.handleRevenueDistribution);
+    app.get("/api/v1/raffle-pool", raffle_pool_1.handleRafflePool);
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);

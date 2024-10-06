@@ -22,4 +22,18 @@ const deletePreviousMessage = async (ctx: Context) => {
   }
 };
 
-export { deletePreviousMessage, formatMessage };
+const isCommand = (ctx: any) => {
+  const input = ctx.message.text;
+  switch (input) {
+    case "/cancel":
+      ctx.reply("Operation cancelled!");
+      ctx.scene.leave();
+      return 1;
+    case "/start":
+      ctx.reply("Operation cancelled!");
+      ctx.scene.leave();
+      return 1;
+  }
+};
+
+export { deletePreviousMessage, formatMessage, isCommand };

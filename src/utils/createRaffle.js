@@ -154,6 +154,7 @@ Good luck to all participants! 🍀
   );
   try {
     await ctx.reply("Your transaction is being processed, please wait...");
+    console.log("here1 ");
     let walletBalance;
     const gasEstimate = await contract.estimateGas.createRaffle(
       _entryCost,
@@ -165,6 +166,8 @@ Good luck to all participants! 🍀
       _maxBuyPerWallet,
       _referrer
     );
+    console.log("here2");
+
     if (ctx.session.mmstate !== "add_raffle") {
       walletBalance = await getWalletBalance(wallet.address);
       const gasPrice = await wallet.provider.getGasPrice();

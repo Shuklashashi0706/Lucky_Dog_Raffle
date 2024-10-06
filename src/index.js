@@ -41,6 +41,9 @@ import { myRaffle } from "./scenes/my-raffle-scene";
 import { handleMMTransactions } from "./utils/mm-sdk";
 import { handleGlobalMetrics } from "./controllers/global-metrics";
 import { handleActiveRaffles } from "./controllers/active-raffles";
+import { handleCompletedRaffles } from "./controllers/completed_raffles";
+import { handleRevenueDistribution } from "./controllers/revenuedistribution";
+import { handleRafflePool } from "./controllers/raffle-pool";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -66,6 +69,7 @@ const stage = new Scenes.Stage([
 ]);
 
 bot.use(session());
+
 bot.use(stage.middleware());
 
 // Function to check if a user has blocked the bot
@@ -101,7 +105,7 @@ bot.start(async (ctx) => {
       [
         Markup.button.url(
           "Add bot to group",
-          `https://t.me/${ctx.botInfo.username}?startgroup=true`
+          `https://t.me/${ctx.botInfo.username}?startgroup=true&admin=change_info+delete_messages+restrict_members+invite_users+pin_messages+manage_topics+manage_video_chats+promote_members`
         ),
       ],
       [
@@ -538,7 +542,6 @@ bot.command("history", async (ctx) => {
 bot.command("cancel", (ctx) => {
   ctx.reply("Cancelling the current operation...");
   ctx.scene.leave();
- 
 });
 
 bot.hears(["start", "/cancel", "/wallets"], () => {
@@ -559,6 +562,9 @@ if (process.env.NODE_ENV === "development") {
   bot.telegram.setWebhook(`${process.env.SERVER_URL}/secret-path`);
   app.get("/api/v1/global-metrics", handleGlobalMetrics);
   app.get("/api/v1/active-raffles", handleActiveRaffles);
+  app.get("/api/v1/completed-raffles", handleCompletedRaffles);
+  app.get("/api/v1/revenue-distribution", handleRevenueDistribution);
+  app.get("/api/v1/raffle-pool", handleRafflePool);
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

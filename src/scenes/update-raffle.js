@@ -10,8 +10,9 @@ const { Scenes, Markup } = require("telegraf");
 const { BaseScene } = Scenes;
 
 export const updateRaffleScene = new BaseScene("updateRaffleScene");
+
 updateRaffleScene.enter(async (ctx) => {
-  ctx.session.oneUpdate === false;
+  ctx.session.oneUpdate = false;
   const groupId = ctx.session.createdGroup;
   try {
     const raffle = await Raffle.findOne({
@@ -71,8 +72,8 @@ Max Buy Per Wallet   : ${raffleDetails.maxBuyPerWallet}
 Referrer             : ${raffleDetails.referrer}
 Tickets Sold         : ${raffleDetails.ticketsSold}
 -----------------------------------------
-
 `;
+
       await ctx.reply(message);
       let ownerWalletFlag = false;
       if (ctx.session.wallets) {
@@ -113,99 +114,55 @@ Tickets Sold         : ${raffleDetails.ticketsSold}
     ctx.reply("Error fetching raffle details");
   }
 });
+
 const timeBasedRaffle = new BaseScene("timeBasedRaffle");
 let isTimeBasedRaffle;
+
 timeBasedRaffle.enter(async (ctx) => {
   isTimeBasedRaffle = ctx.session.timeBasedRaffle;
-  if (ctx.session.timeBasedRaffle === false) {
-    const isRaffleStarted = checkIfRaffleStarted(ctx);
-    if (!isRaffleStarted) {
-      const updateButtons = [
-        [Markup.button.callback("Update start time", "update_start_time")],
-        [
-          Markup.button.callback(
-            "Update max tickets available",
-            "update_max_tickets"
-          ),
-        ],
-        [
-          Markup.button.callback(
-            "Update owner split status",
-            "update_owner_split_status"
-          ),
-        ],
-        [
-          Markup.button.callback(
-            "Update MAX purchase per wallet",
-            "update_max_purchase_per_wallet"
-          ),
-        ],
-      ];
-      ctx.reply(
-        "What would you like to update?",
-        Markup.inlineKeyboard(updateButtons)
-      );
-    } else {
-      const ticketsPurchased = ctx.session.raffleDetails.ticketsSold;
-      if (ticketsPurchased > 0) {
-        ctx.reply(
-          "The raffle has already started, you can only end it now.",
-          Markup.inlineKeyboard([
-            [Markup.button.callback("End Raffle", "end_raffle")],
-          ])
-        );
-      } else {
-        ctx.reply(
-          "The raffle has already started, but there are no tickets purchased yet.",
-          Markup.inlineKeyboard([
-            [Markup.button.callback("End Raffle", "end_raffle")],
-          ])
-        );
-        ctx.scene.leave();
-      }
-    }
+  const isRaffleStarted = checkIfRaffleStarted(ctx);
+
+  if (!isRaffleStarted) {
+    const updateButtons = [
+      [Markup.button.callback("Update Start time", "update_start_time")],
+      isTimeBasedRaffle
+        ? [Markup.button.callback("Update End time", "update_end_time")]
+        : [
+            Markup.button.callback(
+              "Update Max tickets available",
+              "update_max_tickets"
+            ),
+          ],
+      [
+        Markup.button.callback(
+          "Update owner split status",
+          "update_owner_split_status"
+        ),
+      ],
+      [
+        Markup.button.callback(
+          "Update MAX purchase per wallet",
+          "update_max_purchase_per_wallet"
+        ),
+      ],
+      [Markup.button.callback("End Raffle", "end_raffle")],
+    ];
+    ctx.reply(
+      "What would you like to update?",
+      Markup.inlineKeyboard(updateButtons)
+    );
   } else {
-    const isRaffleStarted = checkIfRaffleStarted(ctx);
-    if (!isRaffleStarted) {
-      const updateButtons = [
-        [Markup.button.callback("Update Start time", "update_start_time")],
-        [Markup.button.callback("Update End time", "update_end_time")],
-        [
-          Markup.button.callback(
-            "Update owner split status",
-            "update_owner_split_status"
-          ),
-        ],
-        [
-          Markup.button.callback(
-            "Update MAX purchase per wallet",
-            "update_max_purchase_per_wallet"
-          ),
-        ],
-      ];
-      ctx.reply(
-        "What would you like to update?",
-        Markup.inlineKeyboard(updateButtons)
-      );
-    } else {
-      const ticketsPurchased = ctx.session.raffleDetails.ticketsSold;
-      if (ticketsPurchased > 0) {
-        ctx.reply(
-          "The raffle has already started, you can only end it now.",
-          Markup.inlineKeyboard([
-            [Markup.button.callback("End Raffle", "end_raffle")],
-          ])
-        );
-      } else {
-        ctx.reply(
-          "The raffle has already started, but there are no tickets purchased yet.",
-          Markup.inlineKeyboard([
-            [Markup.button.callback("End Raffle", "end_raffle")],
-          ])
-        );
-        ctx.scene.leave();
-      }
-    }
+    // Raffle started, allow ending even if no tickets are sold
+    const ticketsPurchased = ctx.session.raffleDetails.ticketsSold;
+
+    ctx.reply(
+      ticketsPurchased > 0
+        ? "The raffle has already started, you can end it now."
+        : "The raffle has already started, but no tickets are sold. You can still end it.",
+      Markup.inlineKeyboard([
+        [Markup.button.callback("End Raffle", "end_raffle")],
+      ])
+    );
   }
 });
 
@@ -215,7 +172,7 @@ timeBasedRaffle.action("end_raffle", async (ctx) => {
   if (success) {
     ctx.reply("The raffle has been ended.");
   } else {
-    ctx.reply("Failed to end the raffle");
+    ctx.reply("Failed to end the raffle.");
   }
   ctx.scene.leave();
 });
@@ -318,6 +275,7 @@ timeBasedRaffle.action(
     }
   }
 );
+
 const updateButtons = [
   [Markup.button.callback("Update Start time", "update_start_time")],
   isTimeBasedRaffle
@@ -343,6 +301,7 @@ const updateButtons = [
   [Markup.button.callback("Confirm", "confirm_update")],
   [Markup.button.callback("Cancel", "cancel_update")],
 ];
+
 timeBasedRaffle.on("text", async (ctx) => {
   switch (ctx.session.updateOption) {
     case "update_start_time":
