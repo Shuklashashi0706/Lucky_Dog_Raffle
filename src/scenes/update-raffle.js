@@ -6,6 +6,7 @@ import {
 } from "../utils/contract-functions";
 import { formatTime } from "../utils/fortmat-date";
 import { ethers } from "ethers";
+import { isCommand } from "../utils/message-utils";
 const { Scenes, Markup } = require("telegraf");
 const { BaseScene } = Scenes;
 
@@ -305,6 +306,13 @@ const updateButtons = [
 timeBasedRaffle.on("text", async (ctx) => {
   switch (ctx.session.updateOption) {
     case "update_start_time":
+      if (isCommand(ctx)) return;
+      const input_start_time = ctx.message.text;
+
+      const validation_start_time = startTimeSchema.safeParse(input_start_time);
+      if (!validation_start_time.success) {
+        return ctx.reply(validation_start_time.error.errors[0].message);
+      }
       ctx.session.newStartTime = ctx.message.text;
       await ctx.reply(
         `Your new raffle start time will be updated to ${new Date(
@@ -314,6 +322,8 @@ timeBasedRaffle.on("text", async (ctx) => {
       );
       break;
     case "update_end_time":
+      if (isCommand(ctx)) return;
+
       ctx.session.newEndTime = ctx.message.text;
       await ctx.reply(
         `Your new raffle end time will be updated to ${new Date(
@@ -323,6 +333,15 @@ timeBasedRaffle.on("text", async (ctx) => {
       );
       break;
     case "update_max_purchase_per_wallet":
+      if (isCommand(ctx)) return;
+      const input_max_ticket_per_wallet = ctx.message.text;
+
+      const validation_max_per_wallet = maxTicketsSchema.safeParse(
+        input_max_ticket_per_wallet
+      );
+      if (!validation_max_per_wallet.success) {
+        return ctx.reply(validation_max_per_wallet.error.errors[0].message);
+      }
       ctx.session.newMaxBuyPerWallet = ctx.message.text;
       await ctx.reply(
         `Max buy per wallet will be updated to ${ctx.session.newMaxBuyPerWallet}\nWould you like to update something else.?`,
@@ -338,6 +357,14 @@ timeBasedRaffle.on("text", async (ctx) => {
       break;
 
     case "update_split_percentage":
+      if (isCommand(ctx)) return;
+      const input_split_percent = ctx.message.text;
+
+      const validation_split_percent =
+        splitPercentSchema.safeParse(input_split_percent);
+      if (!validation_split_percent.success) {
+        return ctx.reply(validation_split_percent.error.errors[0].message);
+      }
       ctx.session.newTgOwnerPercent = ctx.message.text;
       await ctx.reply(
         `Split percentage will be updated to ${ctx.session.newTgOwnerPercent}\nWould you like to update something else.?`,
@@ -345,6 +372,14 @@ timeBasedRaffle.on("text", async (ctx) => {
       );
       break;
     case "update_owner_wallet_address":
+      if (isCommand(ctx)) return;
+      const input_split_wallet = ctx.message.text;
+
+      const validation_split_wallet =
+        walletAddressSchema.safeParse(input_split_wallet);
+      if (!validation_split_wallet.success) {
+        return ctx.reply(validation_split_wallet.error.errors[0].message);
+      }
       ctx.session.newTgOwner = ctx.message.text;
       await ctx.reply(
         `Tg owner wallet address will be updated to ${ctx.session.newTgOwner}\nWould you like to update something else.?`,

@@ -16,6 +16,7 @@ import { getWalletByAddress } from "../utils/bot-utils";
 import { createRaffle } from "../utils/createRaffle";
 import { decrypt } from "../utils/encryption-utils";
 import { getWalletBalance } from "../utils/contract-functions";
+import { commandValidation, isCommand } from "../utils/message-utils";
 export const raffleScene = new BaseScene("raffleScene");
 let previousMessage;
 
@@ -138,13 +139,14 @@ export const handleAddRaffle = async (ctx) => {
 raffleScene.enter(async (ctx) => {
   ctx.reply("Enter raffle title:");
 });
+
 raffleScene.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
   const validation = raffleTitleSchema.safeParse(input);
   if (!validation.success) {
     return ctx.reply(validation.error.errors[0].message);
   }
-
   ctx.session.raffleTitle = input;
   ctx.scene.enter("ticketPriceScene");
 });
@@ -154,8 +156,8 @@ ticketPriceScene.enter((ctx) => {
   ctx.reply("Enter ticket price(ETH):");
 });
 ticketPriceScene.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
-
   const validation = ticketPriceSchema.safeParse(input);
   if (!validation.success) {
     return ctx.reply(validation.error.errors[0].message);
@@ -196,6 +198,7 @@ splitDetailsScene.enter((ctx) => {
 });
 
 splitDetailsScene.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
 
   const validation = splitPercentSchema.safeParse(input);
@@ -213,6 +216,7 @@ askSplitWalletScene.enter((ctx) => {
 });
 
 askSplitWalletScene.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
 
   const validation = walletAddressSchema.safeParse(input);
@@ -248,12 +252,14 @@ startTimeScene.action("select_time", async (ctx) => {
 });
 
 startTimeScene.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
 
   const validation = startTimeSchema.safeParse(input);
   if (!validation.success) {
     return ctx.reply(validation.error.errors[0].message);
   }
+  
 
   ctx.session.startTime = input;
   ctx.scene.enter("raffleLimitScene");
@@ -285,6 +291,7 @@ raffleLimitScene.action("value_based", async (ctx) => {
 });
 
 raffleLimitScene.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
 
   if (ctx.session.raffleLimitType === "time_based") {
@@ -309,6 +316,7 @@ maxTicketsSingleUserCanBuy.enter((ctx) => {
 });
 
 maxTicketsSingleUserCanBuy.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
 
   const validation = maxTicketsSchema.safeParse(input);
@@ -334,6 +342,7 @@ rafflePurposeScene.enter((ctx) => {
 });
 
 rafflePurposeScene.on("text", (ctx) => {
+  if (isCommand(ctx)) return;
   const input = ctx.message.text;
 
   const validation = raffleDescriptionSchema.safeParse(input);

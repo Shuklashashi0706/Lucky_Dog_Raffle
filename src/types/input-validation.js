@@ -4,11 +4,20 @@ import { ethers } from "ethers";
 export const raffleTitleSchema = z
   .string()
   .min(1, "Raffle title cannot be empty.");
-export const ticketPriceSchema = z
-  .string()
-  .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
-    message: "Ticket price must be a positive number.",
-  });
+export const ticketPriceSchema = z.string().refine(
+  (val) => {
+    const parsedValue = parseFloat(val);
+    return (
+      !isNaN(parsedValue) &&
+      parsedValue > 0 &&
+      val.trim() === parsedValue.toString()
+    );
+  },
+  {
+    message:
+      "Ticket price must be a positive number and should not contain any non-numeric characters.",
+  }
+);
 export const splitPercentSchema = z.string().refine(
   (val) => {
     const num = parseInt(val, 10);

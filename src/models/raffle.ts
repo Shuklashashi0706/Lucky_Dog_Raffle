@@ -14,11 +14,10 @@ const RaffleSchema = new mongoose.Schema(
     groupId: {
       type: String,
       required: true,
-      unique: true,  // to make only each raffle associated with single group
+      unique: true, // to make only each raffle associated with single group
     },
     groupName: {
       type: String,
-      required: true,
     },
     userId: {
       type: String,
@@ -70,6 +69,10 @@ const RaffleSchema = new mongoose.Schema(
     },
     ticketsSold: {
       type: Number, // Number of tickets sold in this raffle
+      default: 0,
+    },
+    rafflePool: {
+      type: Number,
       default: 0,
     },
   },

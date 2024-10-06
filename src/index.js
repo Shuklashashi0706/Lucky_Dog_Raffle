@@ -43,6 +43,7 @@ import { handleGlobalMetrics } from "./controllers/global-metrics";
 import { handleActiveRaffles } from "./controllers/active-raffles";
 import { handleCompletedRaffles } from "./controllers/completed_raffles";
 import { handleRevenueDistribution } from "./controllers/revenuedistribution";
+import { handleRafflePool } from "./controllers/raffle-pool";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -69,9 +70,7 @@ const stage = new Scenes.Stage([
 
 bot.use(session());
 
-
 bot.use(stage.middleware());
-
 
 // Function to check if a user has blocked the bot
 async function checkBlockedUser(ctx, userId) {
@@ -94,11 +93,9 @@ bot.start(async (ctx) => {
   if (ctx.chat?.type.includes("group")) {
     return;
   }
-
   // Check if the user has blocked the bot
   const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
   if (isBlocked) {
-    // Stop further processing if the user has blocked the bot
     return;
   }
 
@@ -158,11 +155,10 @@ bot.action("back-to-main-menu", async (ctx) => {
   await menuCommand(ctx, ctx.session.wallets);
 });
 
-// bot.command("menu", async (ctx) => {
-//   await menuCommand(ctx, ctx.session.wallets);
-// });
-
 bot.command("wallets", async (ctx) => {
+  if (ctx.chat?.type.includes("group")) {
+    return;
+  }
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
@@ -227,6 +223,9 @@ bot.action("confirm-delete-wallet", async (ctx) => {
 
 // ----------------- referal code start -----------
 bot.command("referral_code", async (ctx) => {
+  if (ctx.chat?.type.includes("group")) {
+    return;
+  }
   await handleReferralCode(ctx);
 });
 
@@ -480,14 +479,6 @@ botEventEmitter.on("dmSent", async ({ userId, ctx, raffleDetails }) => {
 // Action handler for 'sendmessageinprivatedm'
 bot.action("sendmessageinprivatedm", async (ctx) => {
   await ctx.scene.enter("buyRafflePaymentScene");
-  // const message = await ctx.reply("Checking for wallets.....");
-  // if (ctx.session.wallets) {
-  //   await ctx.deleteMessage(message.message_id);
-  //   handleBuyRaffle(ctx);
-  // } else {
-  //   await ctx.deleteMessage(message.message_id);
-  //   handleBuyRaffleWithoutWallet(ctx);
-  // }
 });
 
 // Action handler for wallet selection
@@ -548,8 +539,14 @@ bot.command("history", async (ctx) => {
     );
   }
 });
+bot.command("cancel", (ctx) => {
+  ctx.reply("Cancelling the current operation...");
+  ctx.scene.leave();
+});
 
-//--------------history end----------------------------
+bot.hears(["start", "/cancel", "/wallets"], () => {
+  console.log("hears");
+});
 
 connectDB();
 
@@ -567,6 +564,7 @@ if (process.env.NODE_ENV === "development") {
   app.get("/api/v1/active-raffles", handleActiveRaffles);
   app.get("/api/v1/completed-raffles", handleCompletedRaffles);
   app.get("/api/v1/revenue-distribution", handleRevenueDistribution);
+  app.get("/api/v1/raffle-pool", handleRafflePool);
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);

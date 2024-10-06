@@ -203,19 +203,6 @@ contract.on(
     tgOwnerShare
   ) => {
     try {
-      // 1. Log the event data to the user
-      console.log(`
-            Raffle Ended:
-            - Raffle ID: ${raffleId}
-            - Winner: ${winner}
-            - Winner's Share: ${ethers.utils.formatEther(winnerShare)} ETH
-            - Service Fee: ${ethers.utils.formatEther(serviceFee)} ETH
-            - Referrer: ${referrer}
-            - Referrer Fee: ${ethers.utils.formatEther(referrerFee)} ETH
-            - TG Owner: ${tgOwner}
-            - TG Owner Share: ${ethers.utils.formatEther(tgOwnerShare)} ETH
-          `);
-
       // 2. Update the TotalRevenueDistribution model
       const platformRevenue = parseFloat(ethers.utils.formatEther(serviceFee));
       const tgOwnerRevenue = parseFloat(ethers.utils.formatEther(tgOwnerShare));
@@ -236,25 +223,36 @@ contract.on(
           },
           { new: true, upsert: true } // Create the document if it doesn't exist
         );
-
-      // 3. Update the Raffle model with the raffle completion data
+      const raffleDetails = await getRaffleDetails(raffleId);
+      const rafflePool =
+        ethers.utils.formatEther(raffleDetails.entryCost) *
+        raffleDetails.ticketsSold;
       const raffle = await Raffle.findOne({
         raffleId: raffleId.toString(),
       });
 
       if (raffle) {
         raffle.isActive = false;
-        raffle.completedTime = Date.now(); // Marking raffle as completed
+        raffle.completedTime = Date.now();
+        raffle.rafflePool = rafflePool;
         await raffle.save();
 
         console.log(
           `Raffle ${raffleId} updated in the database with completed time.`
         );
 
-        const message = `Raffle ${raffleId} has ended\nWinner: ${winner}\nWinner's share: ${ethers.utils.formatEther(
-          winnerShare
-        )} ETH`;
-        sendGroupMessage(groupId, message); // Send a message to the group
+        const message = `
+        Raffle Ended:
+        - Raffle ID: ${raffleId}
+        - Winner: ${winner}
+        - Winner's Share: ${ethers.utils.formatEther(winnerShare)} ETH
+        - Service Fee: ${ethers.utils.formatEther(serviceFee)} ETH
+        - Referrer: ${referrer}
+        - Referrer Fee: ${ethers.utils.formatEther(referrerFee)} ETH
+        - TG Owner: ${tgOwner}
+        - TG Owner Share: ${ethers.utils.formatEther(tgOwnerShare)} ETH
+      `;
+        sendGroupMessage(groupId, message);
       } else {
         console.log(`Raffle with ID ${raffleId} not found in the database.`);
       }
