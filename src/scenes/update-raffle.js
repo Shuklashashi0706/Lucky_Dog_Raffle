@@ -156,7 +156,10 @@ timeBasedRaffle.enter(async (ctx) => {
         );
       } else {
         ctx.reply(
-          "The raffle has already started, but there are no tickets purchased yet."
+          "The raffle has already started, but there are no tickets purchased yet.",
+          Markup.inlineKeyboard([
+            [Markup.button.callback("End Raffle", "end_raffle")],
+          ])
         );
         ctx.scene.leave();
       }
@@ -195,7 +198,10 @@ timeBasedRaffle.enter(async (ctx) => {
         );
       } else {
         ctx.reply(
-          "The raffle has already started, but there are no tickets purchased yet."
+          "The raffle has already started, but there are no tickets purchased yet.",
+          Markup.inlineKeyboard([
+            [Markup.button.callback("End Raffle", "end_raffle")],
+          ])
         );
         ctx.scene.leave();
       }

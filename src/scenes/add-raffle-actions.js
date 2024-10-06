@@ -154,7 +154,6 @@ ticketPriceScene.enter((ctx) => {
 });
 ticketPriceScene.on("text", (ctx) => {
   const input = ctx.message.text;
-
   const validation = ticketPriceSchema.safeParse(input);
   if (!validation.success) {
     return ctx.reply(validation.error.errors[0].message);

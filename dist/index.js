@@ -91,7 +91,6 @@ bot.start((ctx) => __awaiter(void 0, void 0, void 0, function* () {
     // Check if the user has blocked the bot
     const isBlocked = yield checkBlockedUser(ctx, ctx.from.id);
     if (isBlocked) {
-        // Stop further processing if the user has blocked the bot
         return;
     }
     try {
@@ -135,10 +134,11 @@ bot.action("back-to-main-menu", (ctx) => __awaiter(void 0, void 0, void 0, funct
     delete ctx.session.selectedRefundWalletName;
     yield (0, bot_utils_1.menuCommand)(ctx, ctx.session.wallets);
 }));
-// bot.command("menu", async (ctx) => {
-//   await menuCommand(ctx, ctx.session.wallets);
-// });
 bot.command("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    if ((_a = ctx.chat) === null || _a === void 0 ? void 0 : _a.type.includes("group")) {
+        return;
+    }
     yield (0, bot_utils_1.walletsCommand)(ctx, ctx.session.wallets);
 }));
 bot.action("wallets", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -192,6 +192,10 @@ bot.action("confirm-delete-wallet", (ctx) => __awaiter(void 0, void 0, void 0, f
 // -----------------------  wallet setup end -----------------------------
 // ----------------- referal code start -----------
 bot.command("referral_code", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    if ((_a = ctx.chat) === null || _a === void 0 ? void 0 : _a.type.includes("group")) {
+        return;
+    }
     yield (0, referal_code_1.handleReferralCode)(ctx);
 }));
 bot.action("create_new_referral", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -351,10 +355,19 @@ bot.on("left_chat_member", (ctx) => __awaiter(void 0, void 0, void 0, function* 
 bot.action(/^SELECT_GROUP_/, add_raffle_actions_1.handleGroupSelection);
 bot.action(/^ADD_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
-    yield ctx.reply("Add Raffle option selected");
     const groupId = ctx.match[1];
-    ctx.session.groupId = groupId;
-    ctx.scene.enter("raffleScene");
+    const existingRaffle = yield raffle_1.default.findOne({
+        groupId: groupId,
+        isActive: true,
+    });
+    if (existingRaffle) {
+        yield ctx.reply("Raffle already exists and running in selected group.");
+    }
+    else {
+        yield ctx.reply("Add Raffle option selected");
+        ctx.session.groupId = groupId;
+        ctx.scene.enter("raffleScene");
+    }
 }));
 bot.action(/^UPDATE_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
@@ -385,14 +398,6 @@ buy_raffle_scene_2.botEventEmitter.on("dmSent", (_a) => __awaiter(void 0, [_a], 
 // Action handler for 'sendmessageinprivatedm'
 bot.action("sendmessageinprivatedm", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.scene.enter("buyRafflePaymentScene");
-    // const message = await ctx.reply("Checking for wallets.....");
-    // if (ctx.session.wallets) {
-    //   await ctx.deleteMessage(message.message_id);
-    //   handleBuyRaffle(ctx);
-    // } else {
-    //   await ctx.deleteMessage(message.message_id);
-    //   handleBuyRaffleWithoutWallet(ctx);
-    // }
 }));
 // Action handler for wallet selection
 bot.action(/buy_raffle_wallet_(.+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -444,7 +449,13 @@ bot.command("history", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
         yield ctx.reply("⚠️ An error occurred while fetching the raffle history. Please try again later.");
     }
 }));
-//--------------history end----------------------------
+bot.command("cancel", (ctx) => {
+    ctx.reply("Cancelling the current operation...");
+    ctx.scene.leave();
+});
+bot.hears(["start", "/cancel", "/wallets"], () => {
+    console.log("hears");
+});
 (0, connect_db_1.default)();
 if (process.env.NODE_ENV === "development") {
     bot.launch(() => {

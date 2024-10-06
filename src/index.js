@@ -89,11 +89,9 @@ bot.start(async (ctx) => {
   if (ctx.chat?.type.includes("group")) {
     return;
   }
-
   // Check if the user has blocked the bot
   const isBlocked = await checkBlockedUser(ctx, ctx.from.id);
   if (isBlocked) {
-    // Stop further processing if the user has blocked the bot
     return;
   }
 
@@ -153,11 +151,10 @@ bot.action("back-to-main-menu", async (ctx) => {
   await menuCommand(ctx, ctx.session.wallets);
 });
 
-// bot.command("menu", async (ctx) => {
-//   await menuCommand(ctx, ctx.session.wallets);
-// });
-
 bot.command("wallets", async (ctx) => {
+  if (ctx.chat?.type.includes("group")) {
+    return;
+  }
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
@@ -222,6 +219,9 @@ bot.action("confirm-delete-wallet", async (ctx) => {
 
 // ----------------- referal code start -----------
 bot.command("referral_code", async (ctx) => {
+  if (ctx.chat?.type.includes("group")) {
+    return;
+  }
   await handleReferralCode(ctx);
 });
 
@@ -475,14 +475,6 @@ botEventEmitter.on("dmSent", async ({ userId, ctx, raffleDetails }) => {
 // Action handler for 'sendmessageinprivatedm'
 bot.action("sendmessageinprivatedm", async (ctx) => {
   await ctx.scene.enter("buyRafflePaymentScene");
-  // const message = await ctx.reply("Checking for wallets.....");
-  // if (ctx.session.wallets) {
-  //   await ctx.deleteMessage(message.message_id);
-  //   handleBuyRaffle(ctx);
-  // } else {
-  //   await ctx.deleteMessage(message.message_id);
-  //   handleBuyRaffleWithoutWallet(ctx);
-  // }
 });
 
 // Action handler for wallet selection
@@ -543,8 +535,15 @@ bot.command("history", async (ctx) => {
     );
   }
 });
+bot.command("cancel", (ctx) => {
+  ctx.reply("Cancelling the current operation...");
+  ctx.scene.leave();
+ 
+});
 
-//--------------history end----------------------------
+bot.hears(["start", "/cancel", "/wallets"], () => {
+  console.log("hears");
+});
 
 connectDB();
 
