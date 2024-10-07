@@ -93,6 +93,7 @@ Tickets Sold         : ${raffleDetails.ticketsSold}
         ctx.session.timeBasedRaffle = false;
       }
       if (!ownerWalletFlag) {
+        ctx.session.redirectToUpdateRaffle = true;
         ctx.reply(
           `We could not find the owner wallet ${raffleDetails.admin.slice(
             0,
@@ -102,7 +103,7 @@ Tickets Sold         : ${raffleDetails.ticketsSold}
             [Markup.button.callback("Import wallet", `import-existing-wallet`)],
             [
               Markup.button.callback(
-                "Use Metamask",
+                "Metamask (BETA)",
                 `metamask_update_owner_check`
               ),
             ],

@@ -259,7 +259,6 @@ startTimeScene.on("text", (ctx) => {
   if (!validation.success) {
     return ctx.reply(validation.error.errors[0].message);
   }
-  
 
   ctx.session.startTime = input;
   ctx.scene.enter("raffleLimitScene");
@@ -436,7 +435,7 @@ confirmScene.action("confirm", async (ctx) => {
 
     walletButtons.push([
       {
-        text: "Metamask application",
+        text: "Metamask (BETA)",
         callback_data: "metamask_add_raffle",
       },
     ]);
@@ -457,7 +456,7 @@ confirmScene.action("confirm", async (ctx) => {
     };
 
     const metamaskApp = {
-      text: "Metamask Application",
+      text: "Metamask (BETA)",
       callback_data: "metamask_add_raffle",
     };
 
