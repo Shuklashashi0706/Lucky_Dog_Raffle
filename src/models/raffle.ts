@@ -40,6 +40,10 @@ const RaffleSchema = new mongoose.Schema(
       type: Number, // Unix timestamp for the end time, can be 0
       required: true,
     },
+    completedTime: {
+      type: Number,
+      default: 0,
+    },
     maxTickets: {
       type: Number, // Represents the maximum number of tickets, can be 0
       required: true,

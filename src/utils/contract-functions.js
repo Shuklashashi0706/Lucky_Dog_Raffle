@@ -202,15 +202,15 @@ contract.on(
     tgOwner,
     tgOwnerShare
   ) => {
+    console.log("Contract end raffle event called");
+    
     try {
-      // 2. Update the TotalRevenueDistribution model
       const platformRevenue = parseFloat(ethers.utils.formatEther(serviceFee));
       const tgOwnerRevenue = parseFloat(ethers.utils.formatEther(tgOwnerShare));
       const referrerEarnings = parseFloat(
         ethers.utils.formatEther(referrerFee)
       );
 
-      // Find and update the existing TotalRevenueDistribution record
       const revenueDistribution =
         await TotalRevenueDistributionModel.findOneAndUpdate(
           {},
@@ -230,6 +230,7 @@ contract.on(
       const raffle = await Raffle.findOne({
         raffleId: raffleId.toString(),
       });
+      console.log("raffle on end raffle", raffle);
 
       if (raffle) {
         raffle.isActive = false;

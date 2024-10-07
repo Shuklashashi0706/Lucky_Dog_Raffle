@@ -10,7 +10,7 @@ import {
   getHistory,
 } from "./account-utils";
 import { CHAIN } from "../config";
-
+import { getWalletBalance } from "./contract-functions";
 // Get wallet total balance
 export async function getWalletTotalBalance(
   walletAddress,
@@ -348,25 +348,33 @@ export async function walletsCommand(ctx, wallets) {
     "✍️ Generate a new Wallet Seed",
     "generate-wallet-seed"
   );
-  // const backToMenuBtn = createCallBackBtn(
-  //   "⬅️ Back to Main Menu",
-  //   "back-to-main-menu"
-  // );
 
-  const inlineKeyboard = [[importWalletBtn], [generateWalletBtn]];
+  // Initialize inlineKeyboard with options to import or generate a wallet
+  let inlineKeyboard = [[importWalletBtn], [generateWalletBtn]];
 
   if (wallets && wallets.length) {
-    const deleteWalletBtn = createCallBackBtn(
-      "❌ Delete Wallet",
-      "btn-delete-wallet"
-    );
-    inlineKeyboard.push([deleteWalletBtn]);
-
     try {
-      const { htmlMessage: _htmlMessage } = await walletsList(wallets);
-      if (_htmlMessage) {
-        htmlMessage = _htmlMessage;
-      }
+      // Create wallet buttons with address and balance displayed
+      const walletButtons = await Promise.all(
+        wallets.map(async (wallet) => {
+          const balance = await getWalletBalance(wallet.address);
+          const formattedAddress = `${wallet.address.slice(0, 5)}...${wallet.address.slice(-4)}`;
+          const formattedBalance = balance ? `(${parseFloat(balance).toFixed(2)} ETH)` : "(0.00 ETH)";
+
+          return [
+            {
+              text: `${formattedAddress} ${formattedBalance}`,
+              callback_data: `#12command123_wallet_${wallet.address}`,
+            },
+          ];
+        })
+      );
+
+      // Update the inlineKeyboard to include the wallet buttons
+      inlineKeyboard = [...walletButtons, ...inlineKeyboard]; // Add wallet buttons on top of import and generate options
+
+      // Custom message when wallets are present
+      htmlMessage = "<b>Here are your linked wallets:</b>\n";
     } catch (error) {
       console.error("Error fetching wallets list:", error);
       htmlMessage =
@@ -374,12 +382,13 @@ export async function walletsCommand(ctx, wallets) {
     }
   }
 
-  // inlineKeyboard.push([backToMenuBtn]);
-
+  // Remove the 'processing' message
   ctx.deleteMessage(processingReply.message_id);
 
+  // Send the message with the updated inline keyboard
   replyWithHTMLAndInlineKeyboard(ctx, htmlMessage, inlineKeyboard);
 }
+
 
 // Delete wallet warning message
 export const deleteWalletWarningMsg =

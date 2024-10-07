@@ -39,7 +39,7 @@ export const buyRaffleScene = new BaseScene("buyRaffleScene");
 
 buyRaffleScene.enter(async (ctx) => {
   const groupId = ctx?.chat.id;
-  const userId = ctx.message.from.id; // Store userId from ctx.message
+  const userId = ctx.message.from.id;
   const unixTimestamp = Math.floor(Date.now() / 1000);
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl

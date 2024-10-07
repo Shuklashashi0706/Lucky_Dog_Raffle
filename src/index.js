@@ -446,6 +446,7 @@ bot.action(/^ADD_RAFFLE_(.*)/, async (ctx) => {
 
 bot.action(/^UPDATE_RAFFLE_(.*)/, async (ctx) => {
   await ctx.deleteMessage();
+  const groupId = ctx.match[1];
   ctx.scene.enter("updateRaffleScene");
 });
 
@@ -539,6 +540,7 @@ bot.command("history", async (ctx) => {
     );
   }
 });
+
 bot.command("cancel", (ctx) => {
   ctx.reply("Cancelling the current operation...");
   ctx.scene.leave();
