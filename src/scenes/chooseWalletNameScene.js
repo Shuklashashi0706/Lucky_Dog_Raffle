@@ -32,7 +32,6 @@ chooseWalletNameStep.on("text", async (ctx) => {
           newWallet.address
         )}`
       );
-
       if (ctx.session.selectWalletReferal) {
         await ctx.scene.leave();
         await handleSelectWallet(ctx);
@@ -45,6 +44,10 @@ chooseWalletNameStep.on("text", async (ctx) => {
         await ctx.scene.leave();
         await ctx.scene.enter("handleWalletList");
         delete ctx.session.BuyRaffle;
+      } else if (ctx.session.redirectToUpdateRaffle === true) {
+        ctx.session.redirectToUpdateRaffle = false;
+        await ctx.scene.leave();
+        ctx.scene.enter("timeBasedRaffle");
       } else {
         await ctx.scene.leave();
       }
