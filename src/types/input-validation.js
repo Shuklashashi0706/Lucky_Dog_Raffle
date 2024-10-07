@@ -50,7 +50,7 @@ export const maxTicketsSchema = z.string().refine(
   },
   {
     message:
-      "Max tickets per wallet must be a positive integer between 1 and 1000.",
+      "Max tickets must be a positive integer between 1 and 1000.",
   }
 );
 export const raffleDescriptionSchema = z

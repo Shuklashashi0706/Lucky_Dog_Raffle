@@ -7,6 +7,12 @@ import {
 import { formatTime } from "../utils/fortmat-date";
 import { ethers } from "ethers";
 import { isCommand } from "../utils/message-utils";
+import {
+  maxTicketsSchema,
+  splitPercentSchema,
+  startTimeSchema,
+  walletAddressSchema,
+} from "../types/input-validation";
 const { Scenes, Markup } = require("telegraf");
 const { BaseScene } = Scenes;
 
@@ -324,6 +330,12 @@ timeBasedRaffle.on("text", async (ctx) => {
       break;
     case "update_end_time":
       if (isCommand(ctx)) return;
+      const input_end_time = ctx.message.text;
+
+      const validation_end_time = startTimeSchema.safeParse(input_end_time);
+      if (!validation_end_time.success) {
+        return ctx.reply(validation_end_time.error.errors[0].message);
+      }
 
       ctx.session.newEndTime = ctx.message.text;
       await ctx.reply(
@@ -350,6 +362,14 @@ timeBasedRaffle.on("text", async (ctx) => {
       );
       break;
     case "update_max_tickets":
+      if (isCommand(ctx)) return;
+      const input_max_tickets = ctx.message.text;
+
+      const validation_max_tickets =
+        maxTicketsSchema.safeParse(input_max_tickets);
+      if (!validation_max_tickets.success) {
+        return ctx.reply(validation_max_tickets.error.errors[0].message);
+      }
       ctx.session.newMaxTickets = ctx.message.text;
       await ctx.reply(
         `Max buy tickets per raffle will be updated to ${ctx.session.newMaxTickets}\nWould you like to update something else.?`,
