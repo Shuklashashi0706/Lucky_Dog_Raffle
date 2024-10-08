@@ -31,9 +31,9 @@ async function deletePreviousMessage(ctx, userId) {
   }
 }
 
-function escapeMarkdown(text) {
-  return text.replace(/([_*[\]()])/g, "\\$1");
-}
+export const escapeMarkdown = (text) => {
+  return text.replace(/([_*[\]()])/g, " ");
+};
 
 export const buyRaffleScene = new BaseScene("buyRaffleScene");
 
@@ -145,14 +145,20 @@ buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
     // Send a private message to the user with the raffle details
     await ctx.telegram.sendMessage(
       userId,
-      `🎫 You are purchasing tickets from:\n\n🏠 *Group Name:* ${escapeMarkdown(groupName)}\n🎉 *Raffle Title:* ${escapeMarkdown(raffleTitle)}`,
+      `🎫 You are purchasing tickets from:\n\n🏠 *Group Name:* ${escapeMarkdown(
+        groupName
+      )}\n🎉 *Raffle Title:* ${escapeMarkdown(raffleTitle)}`,
       { parse_mode: "Markdown" }
     );
     await ctx.answerCbQuery(
-      `📩 Please check your DMs, ${escapeMarkdown(ctx.from.first_name)}, to proceed with your ticket purchase! 🎟️`
+      `📩 Please check your DMs, ${escapeMarkdown(
+        ctx.from.first_name
+      )}, to proceed with your ticket purchase! 🎟️`
     );
     const sentMessage = await ctx.reply(
-      `📩 Please check your DMs, ${escapeMarkdown(ctx.from.first_name)}, to proceed with your ticket purchase! 🎟️`
+      `📩 Please check your DMs, ${escapeMarkdown(
+        ctx.from.first_name
+      )}, to proceed with your ticket purchase! 🎟️`
     );
 
     // Emit a custom event after sending the DM with user ID and group context

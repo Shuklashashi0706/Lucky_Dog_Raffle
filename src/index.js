@@ -14,7 +14,7 @@ import {
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
 } from "./scenes/add-raffle-actions";
-import { buyRaffleScenes } from "./scenes/buy-raffle-scene";
+import { buyRaffleScenes,escapeMarkdown } from "./scenes/buy-raffle-scene";
 import { buyRafflePaymentScenes } from "./utils/buyRaffle";
 import { botEventEmitter } from "./scenes/buy-raffle-scene";
 import {
@@ -527,7 +527,7 @@ bot.command("history", async (ctx) => {
       message += `*${index + 1}.*`;
       message += `🏆 *Raffle ID*: \`${raffle.raffleId}\`\n`;
       message += `👤 *Winner*: ${raffle.winner || "Unknown"}\n`;
-      message += `🎟️ *Raffle Title*: _${raffle.raffleTitle}_\n`;
+      message += `🎟️ *Raffle Title*: _${escapeMarkdown(raffle.raffleTitle)}_\n`;
       message += `\n-------------------\n\n`;
     });
 

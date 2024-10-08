@@ -2,6 +2,7 @@ import { Scenes } from "telegraf";
 import { makeItClickable } from "../utils/bot-utils";
 import { handleSelectWallet } from "./referal-code";
 import { handleBuyRaffle } from "../utils/buyRaffle";
+
 export const chooseWalletNameScene = "chooseWalletNameScene";
 export const chooseWalletNameStep = new Scenes.BaseScene(chooseWalletNameScene);
 
@@ -18,11 +19,14 @@ chooseWalletNameStep.on("text", async (ctx) => {
   if (walletName.length > 8) {
     await ctx.reply("Wallet name must be less than or equal to 8 characters");
   } else {
-    if (ctx.session.wallets && ctx.session.wallets.length === 6) {
+  
+
+     if (ctx.session.wallets && ctx.session.wallets.length === 6) {
       await ctx.reply("Wallet limit reached");
     } else {
       await ctx.deleteMessage(); // Ensure message deletion
 
+      // Assign the name to the new wallet
       const newWallet = ctx.session.newWallet;
       newWallet.name = walletName;
       ctx.session.wallets = [...(ctx.session.wallets ?? []), newWallet];
@@ -32,6 +36,8 @@ chooseWalletNameStep.on("text", async (ctx) => {
           newWallet.address
         )}`
       );
+
+      // Handle different scenarios for post-wallet import actions
       if (ctx.session.selectWalletReferal) {
         await ctx.scene.leave();
         await handleSelectWallet(ctx);

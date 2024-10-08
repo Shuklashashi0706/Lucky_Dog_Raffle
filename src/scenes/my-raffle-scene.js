@@ -120,7 +120,6 @@ const showActiveRaffles = async (ctx) => {
         },
       },
     ]);
-    console.log("raffles", activeRaffles);
 
     if (activeRaffles.length > 0) {
       // Create a list of buttons with each raffle
@@ -154,10 +153,10 @@ const showCompletedRaffles = async (ctx) => {
   try {
     // Delete previous messages
     await deletePreviousMessages(ctx);
-
+    
     const userId = ctx.from.id.toString();
     const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-
+    
     // MongoDB aggregation to fetch completed raffles for the user
     const completedRaffles = await Raffle.aggregate([
       {
@@ -191,17 +190,19 @@ const showCompletedRaffles = async (ctx) => {
         },
       },
     ]);
-
+    
     // Check if there are any completed raffles
     if (completedRaffles.length > 0) {
       // Create a list of buttons with each raffle
-      const buttons = completedRaffles.map((raffle) => [
-        Markup.button.callback(
-          `🎟️ ${raffle.raffleTitle} (Group: ${raffle.groupName})`,
-          `raffle_${raffle.raffleId}`
-        ),
-      ]);
-
+      const buttons = completedRaffles.map((raffle) => {
+        return [
+          Markup.button.callback(
+            `🎟️ ${raffle.raffleTitle} (Group: ${raffle.groupName})`,
+            `raffle_${raffle.raffleId}`
+          ),
+        ];
+      });
+      
       const response = await ctx.reply(
         "Your Completed Raffles:",
         Markup.inlineKeyboard(buttons)
@@ -223,6 +224,7 @@ const showCompletedRaffles = async (ctx) => {
 // Handle button actions for raffle details
 myRaffle.action(/raffle_\d+/, async (ctx) => {
   const raffleId = ctx.match[0].split("_")[1]; // Extract the raffleId from the button callback
+  console.log("completed raffle",raffleId);
   await showRaffleDetails(ctx, raffleId);
 });
 
@@ -245,7 +247,6 @@ myRaffle.action("show_active_raffles", async (ctx) => {
 });
 
 // Handle button actions for completed raffles
-myRaffle.action("completed", async (ctx) => {
+myRaffle.action("completed", async (ctx) => {  
   await showCompletedRaffles(ctx);
-  await ctx.scene.leave();
 });
