@@ -2,6 +2,7 @@ import Referral from "../models/referal"; // Import the Referral model
 import { z } from "zod";
 import { prevMessageState } from "../utils/state";
 import { getWalletBalance } from "../utils/contract-functions";
+import { Scenes } from "telegraf";
 // Schema for validating Ethereum address using Zod
 const walletAddressSchema = z
   .string()
@@ -127,72 +128,65 @@ export const handleCreateNewReferal = async (ctx) => {
   }
 };
 
-// Function to handle input of wallet address
-export const handleInputWalletPrompt = async (ctx) => {
+const askForWalletAddress = async (ctx) => {
   try {
-    // Prompt the user to enter their wallet address
     await ctx.reply("Enter your wallet address:");
-    // Set a flag or context to indicate that the bot is waiting for the wallet address input
-    ctx.session.awaitingWalletAddress = true;
+    return ctx.wizard.next();
   } catch (error) {
     console.error("Error prompting wallet address input:", error);
-    ctx.reply("Failed to prompt for wallet address. Please try again.");
+    await ctx.reply("Failed to prompt for wallet address. Please try again.");
+    return ctx.scene.leave();
   }
 };
 
-// Function to handle the actual input of wallet address and create a referral
-export const handleWalletAddressInput = async (ctx) => {
-  const chatId = ctx.chat?.id.toString();
-  if (!chatId || !ctx.session.awaitingWalletAddress) {
-    // Check if bot is awaiting wallet address input
-    return; // Exit if the session is not expecting a wallet address
-  }
-
+const handleWalletAddress = async (ctx) => {
   const message = ctx.message?.text;
 
   try {
-    // Validate the wallet address using Zod
     const validationResult = walletAddressSchema.safeParse(message);
     if (!validationResult.success) {
-      ctx.reply(
+      await ctx.reply(
         `Error: ${validationResult.error.errors[0].message}. Please enter a valid Ethereum address.`
       );
-      return;
+      return; 
     }
 
     const walletAddress = validationResult.data;
 
-    // Check if the wallet address already has a referral code
     const existingReferral = await Referral.findOne({ walletAddress });
     if (existingReferral) {
-      ctx.reply(
+      await ctx.reply(
         `This wallet address already has a referral code: ${existingReferral.referralCode}`
       );
-      return;
+      return ctx.scene.leave(); 
     }
 
-    // Generate a unique 5-character referral code
     const referralCode = await generateUniqueReferralCode();
 
-    // Create and save the new referral
     const newReferral = new Referral({
-      userId: ctx.from.id, // Using Telegram user ID as userId
-      walletAddress,
+      userId: ctx.from.id, 
       referralCode,
     });
 
     await newReferral.save();
-    ctx.reply(
+
+    await ctx.reply(
       `Your referral code is "${referralCode}". Share this with your friends and get a 0.5% commission from the raffles they create.`
     );
 
-    // Clear the session flag after processing
-    ctx.session.awaitingWalletAddress = false;
+    return ctx.scene.leave(); 
   } catch (error) {
     console.error("Error handling wallet address input:", error);
-    ctx.reply("Failed to create referral code. Please try again.");
+    await ctx.reply("Failed to create referral code. Please try again.");
+    return ctx.scene.leave();
   }
 };
+
+export const walletReferralScene = new Scenes.WizardScene(
+  "walletReferralScene",
+  askForWalletAddress,
+  handleWalletAddress 
+);
 
 // Function to handle selecting a wallet from the session and creating a referral code
 export const handleSelectWallet = async (ctx) => {

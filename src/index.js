@@ -14,7 +14,7 @@ import {
   handleCreateRaffleWithoutReferral,
   handleCreateRaffleWithReferral,
 } from "./scenes/add-raffle-actions";
-import { buyRaffleScenes,escapeMarkdown } from "./scenes/buy-raffle-scene";
+import { buyRaffleScenes, escapeMarkdown } from "./scenes/buy-raffle-scene";
 import { buyRafflePaymentScenes } from "./utils/buyRaffle";
 import { botEventEmitter } from "./scenes/buy-raffle-scene";
 import {
@@ -24,6 +24,7 @@ import {
   handleSelectWallet,
   handleWalletSelection,
 } from "./scenes/referal-code";
+import { walletReferralScene } from "./scenes/referal-code";
 import { importWalletScene } from "./scenes/importWalletScene";
 import { generateWalletSeedScene } from "./scenes/generateWalletSeedScene";
 import { importWalletStep } from "./scenes/importWalletScene";
@@ -66,6 +67,7 @@ const stage = new Scenes.Stage([
   ...buyRaffleScenes,
   ...buyRafflePaymentScenes,
   myRaffle,
+  walletReferralScene,
 ]);
 
 bot.use(session());
@@ -240,7 +242,8 @@ bot.action("input_wallet_address", async (ctx) => {
   if (prevMessageState.prevMessage) {
     await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
   }
-  await handleInputWalletPrompt(ctx);
+  // await handleInputWalletPrompt(ctx);
+  await ctx.scene.enter("walletReferralScene");
 });
 
 bot.action("select_wallet_address", async (ctx) => {
