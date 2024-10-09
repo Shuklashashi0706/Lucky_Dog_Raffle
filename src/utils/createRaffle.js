@@ -4,8 +4,10 @@ import Raffle from "../models/raffle";
 import { formatTime } from "./fortmat-date";
 import { getWalletBalance } from "./contract-functions";
 import GlobalMetrics from "../models/global-metrics";
+import { Markup } from "telegraf";
 
 const ZERO_WALLET_ADDRESS = "0x0000000000000000000000000000000000000000";
+const CHAIN_ID = "0x13882";
 export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
@@ -13,6 +15,14 @@ export const createRaffle = async (ctx, privateKey) => {
   let wallet;
 
   if (ctx.session.mmstate === "add_raffle") {
+    if (privateKey.provider.provider.chainId !== CHAIN_ID) {
+      return ctx.reply(
+        "Invalid Network Selected!,\nChange Network and try again",
+        Markup.inlineKeyboard([
+          Markup.button.callback("Try Again", "metamask_add_raffle"),
+        ])
+      );
+    }
     wallet = privateKey;
     ctx.session.currentWallet = await wallet.getAddress();
     // delete ctx.session.mmstate;

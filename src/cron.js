@@ -11,7 +11,6 @@ export const startRaffleCron = () => {
         isActive: true,
         raffleEndTime: { $lte: tenMinutesLater, $gt: now },
       });
-
       for (const raffle of rafflesEndingSoon) {
         await sendGroupMessage(
           raffle.userId,
