@@ -6,6 +6,7 @@ import { menuCommand, walletsCommand } from "./utils/bot-utils";
 import connectDB from "./utils/connect-db";
 import Group from "./models/group";
 import Raffle from "./models/raffle";
+import { ethers } from "ethers";
 import {
   raffleScene,
   handleGroupSelection,
@@ -17,6 +18,7 @@ import {
 import { buyRaffleScenes, escapeMarkdown } from "./scenes/buy-raffle-scene";
 import { buyRafflePaymentScenes } from "./utils/buyRaffle";
 import { botEventEmitter } from "./scenes/buy-raffle-scene";
+import { getRaffleDetails } from "./utils/contract-functions";
 import {
   handleReferralCode,
   handleCreateNewReferal,
@@ -154,7 +156,7 @@ bot.action("back-to-main-menu", async (ctx) => {
   delete ctx.session.selectedDeleteWalletName;
   delete ctx.session.selectedPlayWalletName;
   delete ctx.session.selectedRefundWalletName;
-  await menuCommand(ctx, ctx.session.wallets);
+  await walletsCommand(ctx, ctx.session.wallets);
 });
 
 bot.command("wallets", async (ctx) => {
@@ -168,6 +170,7 @@ bot.action("wallets", async (ctx) => {
   if (prevMessageState.prevMessage) {
     await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
   }
+
   await walletsCommand(ctx, ctx.session.wallets);
 });
 
@@ -456,13 +459,92 @@ bot.action(/^UPDATE_RAFFLE_(.*)/, async (ctx) => {
 });
 
 bot.action(/^VIEW_RAFFLE_(.*)/, async (ctx) => {
+  // Delete the previous message if it exists
   if (prevMessageState.prevMessage) {
     await ctx.deleteMessage(prevMessageState.prevMessage.message_id);
   }
-  const groupId = ctx.match[1];
-  // Handle the logic for viewing raffle details
-  await ctx.reply(`Viewing raffle details for group ID: ${groupId}`);
+
+  const groupId = ctx.match[1]; // Get groupId from the regex match
+
+  try {
+    // Find the active raffle for the group
+    const raffle = await Raffle.findOne({
+      groupId: groupId,
+      isActive: true,
+    }).select("raffleId");
+
+    // If no active raffle exists, prompt to add a new one
+    if (!raffle) {
+      await ctx.reply(
+        "No raffle running in this group, start by creating one.",
+        Markup.inlineKeyboard([
+          Markup.button.callback("Add a new Raffle", `ADD_RAFFLE_${groupId}`),
+        ])
+      );
+      return ctx.scene.leave();
+    }
+
+    // Get raffle details using raffleId
+    const raffleDetails = await getRaffleDetails(raffle.raffleId);
+
+    // If raffle is not active, show a message to add a new raffle
+    if (!raffleDetails.isActive) {
+      await ctx.reply(
+        "No raffle running in this group, start by creating one.",
+        Markup.inlineKeyboard([
+          Markup.button.callback("Add a new Raffle", `ADD_RAFFLE_${groupId}`),
+        ])
+      );
+    } else {
+      // Save raffleId and details in the session
+      ctx.session.raffleId = raffle.raffleId;
+      ctx.session.raffleDetails = raffleDetails;
+
+      // Prepare the raffle details message
+      const winner =
+        raffleDetails.winner === "0x0000000000000000000000000000000000000000"
+          ? "No Winner Yet"
+          : raffleDetails.winner;
+
+      const message = `
+Raffle Details ✨
+-----------------------------------------
+Raffle ID            : ${raffle.raffleId}
+Admin                : ${raffleDetails.admin}
+TG Owner             : ${raffleDetails.tgOwner}
+Winner               : ${winner}
+Entry Cost           : ${ethers.utils.formatEther(
+        raffleDetails.entryCost
+      )} Ether
+Raffle Start Time    : ${new Date(
+        raffleDetails.raffleStartTime * 1000
+      ).toUTCString()}
+${
+  raffleDetails.raffleEndTime.toNumber() !== 0
+    ? `Raffle End Time      : ${new Date(
+        raffleDetails.raffleEndTime * 1000
+      ).toUTCString()}`
+    : `Max Tickets          : ${raffleDetails.maxTickets}`
+}
+Is Active            : ${raffleDetails.isActive ? "Yes" : "No"}
+TG Owner Percentage  : ${(raffleDetails.tgOwnerPercentage / 100).toFixed(2)}% 
+Max Buy Per Wallet   : ${raffleDetails.maxBuyPerWallet}
+Referrer             : ${raffleDetails.referrer}
+Tickets Sold         : ${raffleDetails.ticketsSold}
+-----------------------------------------
+`;
+
+      // Send the raffle details message
+      await ctx.reply(message);
+    }
+  } catch (error) {
+    console.error("Error viewing raffle details:", error);
+    await ctx.reply(
+      "There was an error retrieving the raffle details. Please try again."
+    );
+  }
 });
+
 // -----------------------adding bot to group end-------------------
 
 // ---------------------------- buy raffle start------------------------------
