@@ -7,7 +7,7 @@ import { createRaffle } from "./createRaffle";
 const userSessions = new Map();
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
-const chainId = 80002;
+const chainId = "0x13882";
 
 const sdk = new MetaMaskSDK({
   shouldShimWeb3: false,
@@ -57,7 +57,9 @@ export const generateMMSigner = async (ctx) => {
           connected = true;
           await ctx.reply(`Wallet connected: ${from}`);
 
-          // await switchNetworkIfNeeded();
+          if (!checkForConnectedNetwork()) {
+           
+          }
         }
       } catch (error) {
         console.error("Error connecting:", error);
@@ -126,42 +128,9 @@ export const handleMMTransactions = async (ctx) => {
   }
 };
 
-async function switchNetworkIfNeeded() {
+async function checkForConnectedNetwork() {
   const currentChainId = await ethereum.request({ method: "eth_chainId" });
   if (currentChainId !== chainId) {
-    try {
-      await ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId }],
-      });
-      console.log(`Switched to Polygon Mumbai (Chain ID: ${chainId})`);
-    } catch (switchError) {
-      if (switchError.code === 4902) {
-        try {
-          await ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId,
-                chainName: "Polygon Amoy Testnet",
-                rpcUrls: [
-                  "https://polygon-amoy.g.alchemy.com/v2/P2xwp8gerO9lweNzM0VvuGWVwt3tr_Pv",
-                ],
-                nativeCurrency: {
-                  name: "MATIC",
-                  symbol: "MATIC",
-                  decimals: 18,
-                },
-                blockExplorerUrls: ["https://amoy.polygonscan.com/"],
-              },
-            ],
-          });
-        } catch (addError) {
-          console.error("Failed to add the network:", addError);
-        }
-      } else {
-        console.error("Failed to switch network:", switchError);
-      }
-    }
-  }
+    return 0;
+  } else return 1;
 }

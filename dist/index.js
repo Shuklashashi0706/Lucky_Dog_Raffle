@@ -25,6 +25,7 @@ const buy_raffle_scene_1 = require("./scenes/buy-raffle-scene");
 const buyRaffle_1 = require("./utils/buyRaffle");
 const buy_raffle_scene_2 = require("./scenes/buy-raffle-scene");
 const referal_code_1 = require("./scenes/referal-code");
+const referal_code_2 = require("./scenes/referal-code");
 const importWalletScene_1 = require("./scenes/importWalletScene");
 const generateWalletSeedScene_1 = require("./scenes/generateWalletSeedScene");
 const importWalletScene_2 = require("./scenes/importWalletScene");
@@ -63,6 +64,7 @@ const stage = new telegraf_1.Scenes.Stage([
     ...buy_raffle_scene_1.buyRaffleScenes,
     ...buyRaffle_1.buyRafflePaymentScenes,
     my_raffle_scene_1.myRaffle,
+    referal_code_2.walletReferralScene,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -160,6 +162,9 @@ bot.action("import-existing-wallet", (ctx) => __awaiter(void 0, void 0, void 0, 
     yield ctx.deleteMessage();
     ctx.scene.enter(importWalletScene_1.importWalletScene);
 }));
+bot.command("test", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, mm_sdk_1.generateMMSigner)(ctx);
+}));
 bot.action("generate-wallet-seed", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
     ctx.scene.enter(generateWalletSeedScene_1.generateWalletSeedScene);
@@ -211,7 +216,8 @@ bot.action("input_wallet_address", (ctx) => __awaiter(void 0, void 0, void 0, fu
     if (state_1.prevMessageState.prevMessage) {
         yield ctx.deleteMessage(state_1.prevMessageState.prevMessage.message_id);
     }
-    yield (0, referal_code_1.handleInputWalletPrompt)(ctx);
+    // await handleInputWalletPrompt(ctx);
+    yield ctx.scene.enter("walletReferralScene");
 }));
 bot.action("select_wallet_address", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     if (state_1.prevMessageState.prevMessage) {
@@ -374,6 +380,7 @@ bot.action(/^ADD_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, functi
 }));
 bot.action(/^UPDATE_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.deleteMessage();
+    const groupId = ctx.match[1];
     ctx.scene.enter("updateRaffleScene");
 }));
 bot.action(/^VIEW_RAFFLE_(.*)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
@@ -441,7 +448,7 @@ bot.command("history", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
             message += `*${index + 1}.*`;
             message += `🏆 *Raffle ID*: \`${raffle.raffleId}\`\n`;
             message += `👤 *Winner*: ${raffle.winner || "Unknown"}\n`;
-            message += `🎟️ *Raffle Title*: _${raffle.raffleTitle}_\n`;
+            message += `🎟️ *Raffle Title*: _${(0, buy_raffle_scene_1.escapeMarkdown)(raffle.raffleTitle)}_\n`;
             message += `\n-------------------\n\n`;
         });
         // Send the message to the user

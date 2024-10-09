@@ -12,7 +12,7 @@ export const raffleDetail = new Map();
 export const handleBuyRaffle = async (ctx) => {
   await ctx.scene.enter("buyRafflePaymentScene");
 };
-
+const CHAIN_ID = "0x13882";
 export const buyRafflePaymentScene = new Scenes.BaseScene(
   "buyRafflePaymentScene"
 );
@@ -157,6 +157,17 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   const totalCost = ctx.session.totalCost;
   let walletAddress;
   if (ctx.session.mmstate === "buy_ticket") {
+    if (
+      ctx.session.buyRaffleSelectedWalletAddress.provider.provider.chainId !==
+      CHAIN_ID
+    ) {
+      return ctx.reply(
+        "Invalid Network Selected!,\nChange Network and try again",
+        Markup.inlineKeyboard([
+          Markup.button.callback("Try Again", "metamask_buy_ticket"),
+        ])
+      );
+    }
     walletAddress = ctx.session.buyRaffleSelectedWalletAddress.getAddress();
   } else {
     walletAddress = ctx.session.buyRaffleSelectedWalletAddress;

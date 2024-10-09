@@ -39,7 +39,7 @@ import {
   handleBuyRaffleWithoutWallet,
 } from "./utils/buyRaffle";
 import { myRaffle } from "./scenes/my-raffle-scene";
-import { handleMMTransactions } from "./utils/mm-sdk";
+import { generateMMSigner, handleMMTransactions } from "./utils/mm-sdk";
 import { handleGlobalMetrics } from "./controllers/global-metrics";
 import { handleActiveRaffles } from "./controllers/active-raffles";
 import { handleCompletedRaffles } from "./controllers/completed_raffles";
@@ -182,7 +182,9 @@ bot.action("import-existing-wallet", async (ctx) => {
   await ctx.deleteMessage();
   ctx.scene.enter(importWalletScene);
 });
-
+bot.command("test", async (ctx) => {
+  await generateMMSigner(ctx);
+});
 bot.action("generate-wallet-seed", async (ctx) => {
   await ctx.deleteMessage();
   ctx.scene.enter(generateWalletSeedScene);

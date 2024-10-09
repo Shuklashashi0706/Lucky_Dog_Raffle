@@ -5,6 +5,7 @@ import { decrypt } from "./encryption-utils";
 import Raffle from "../models/raffle";
 import { sendGroupMessage } from "./sendGroupMessage";
 import { TotalRevenueDistributionModel } from "../models/total_revenue";
+import { Markup } from "telegraf";
 const provider = new ethers.providers.JsonRpcProvider(CHAIN["sepolia"].rpcUrl);
 
 export const getWalletBalance = async (walletAddress) => {
@@ -12,6 +13,8 @@ export const getWalletBalance = async (walletAddress) => {
   const balanceEth = ethers.utils.formatEther(balanceWei);
   return balanceEth;
 };
+
+const CHAIN_ID = "0x13882";
 
 const contract = new ethers.Contract(RAFFLE_CONTRACT, RAFFLE_ABI, provider);
 export async function getRaffleDetails(raffleId) {
@@ -38,6 +41,17 @@ export async function endRaffle(ctx, raffleId) {
     await ctx.reply("Starting the process to end the raffle...");
 
     if (ctx.session.mmstate === "update_raffle") {
+      if (
+        ctx.session.updateRaffleSelectedAddress.provider.provider.chainId !==
+        CHAIN_ID
+      ) {
+        return ctx.reply(
+          "Invalid Network Selected!,\nChange Network and try again",
+          Markup.inlineKeyboard([
+            Markup.button.callback("Try Again", "metamask_add_raffle"),
+          ])
+        );
+      }
       wallet = ctx.session.updateRaffleSelectedAddress;
     } else {
       const walletAddress = ctx.session.adminWalletAddress;
@@ -130,6 +144,17 @@ export async function updateRaffle(
   try {
     let wallet;
     if (ctx.session.mmstate === "update_raffle") {
+      if (
+        ctx.session.updateRaffleSelectedAddress.provider.provider.chainId !==
+        CHAIN_ID
+      ) {
+        return ctx.reply(
+          "Invalid Network Selected!,\nChange Network and try again",
+          Markup.inlineKeyboard([
+            Markup.button.callback("Try Again", "metamask_add_raffle"),
+          ])
+        );
+      }
       wallet = ctx.session.updateRaffleSelectedAddress;
     } else {
       const walletAddress = ctx.session.adminWalletAddress;
@@ -203,7 +228,7 @@ contract.on(
     tgOwnerShare
   ) => {
     console.log("Contract end raffle event called");
-    
+
     try {
       const platformRevenue = parseFloat(ethers.utils.formatEther(serviceFee));
       const tgOwnerRevenue = parseFloat(ethers.utils.formatEther(tgOwnerShare));
