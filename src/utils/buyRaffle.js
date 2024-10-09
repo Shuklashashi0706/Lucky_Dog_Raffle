@@ -7,6 +7,7 @@ import { getWalletByAddress } from "./bot-utils.js";
 import { decrypt } from "./encryption-utils";
 import GlobalMetrics from "../models/global-metrics";
 import { getWalletBalance } from "./contract-functions.js";
+import Raffle from "../models/raffle.js";
 export const raffleDetail = new Map();
 
 export const handleBuyRaffle = async (ctx) => {
@@ -185,6 +186,16 @@ buyRaffleContractCallScene.enter(async (ctx) => {
     await GlobalMetrics.updateOne(
       {},
       { $inc: { totalRafflesCreated: numOfTickets } },
+      { upsert: true }
+    );
+
+    await Raffle.updateOne(
+      { raffleId: raffleId },
+      {
+        $set: {
+          rafflePool: totalCost,
+        },
+      },
       { upsert: true }
     );
     // Notify the group about the successful purchase

@@ -1,7 +1,8 @@
 import Raffle from "../models/raffle";
 export const handleRafflePool = async (req, res) => {
+  const isActive = req.query.isActive;
   try {
-    const topRaffles = await Raffle.find({})
+    const topRaffles = await Raffle.find({ isActive })
       .sort({ rafflePool: -1 })
       .limit(20);
 
