@@ -13,6 +13,10 @@ type Chains = {
 export const CHAIN: Chains = {
   sepolia: {
     rpcUrl: `https://polygon-amoy.g.alchemy.com/v2/P2xwp8gerO9lweNzM0VvuGWVwt3tr_Pv`,
+    explorerUrl: "https://sepolia.etherscan.io",
+    name: "Sepolia Testnet",
+    currency: "ETH",
+    cbActionKey: "ethereum-sepolia",
   },
   "mumbai-testnet": {
     rpcUrl:

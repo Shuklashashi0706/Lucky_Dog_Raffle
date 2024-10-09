@@ -24,18 +24,18 @@ export async function getWalletTotalBalance(
       continue;
     }
     const walletBalanceInEth = await getBalance(
-      CHAIN[chainKey].rpcUrl,
+      CHAIN["sepolia"].rpcUrl,
       walletAddress
     );
-    totalWalletBalance[CHAIN[chainKey].currency] = walletBalanceInEth;
+    totalWalletBalance[CHAIN["sepolia"].currency] = walletBalanceInEth;
 
     if (totalWalletBalanceInEth === "") {
       totalWalletBalanceInEth += `${formatBalance(walletBalanceInEth)} ${
-        CHAIN[chainKey].currency
+        CHAIN["sepolia"].currency
       }`;
     } else {
       totalWalletBalanceInEth += ` | ${formatBalance(walletBalanceInEth)} ${
-        CHAIN[chainKey].currency
+        CHAIN["sepolia"].currency
       }`;
     }
   }
@@ -70,6 +70,10 @@ export function getWalletByAddress(ctx, walletAddress) {
   return ctx.session.wallets.find(
     (_wallet) => _wallet.address === walletAddress
   );
+}
+
+export function getWalletByName(ctx, walletName) {
+  return ctx.session.wallets.find((_wallet) => _wallet.name === walletName);
 }
 
 // Make it clickable
@@ -354,12 +358,21 @@ export async function walletsCommand(ctx, wallets) {
 
   if (wallets && wallets.length) {
     try {
+      const deleteWalletBtn = createCallBackBtn(
+        "❌ Delete Wallet",
+        "btn-delete-wallet"
+      );
       // Create wallet buttons with address and balance displayed
       const walletButtons = await Promise.all(
         wallets.map(async (wallet) => {
           const balance = await getWalletBalance(wallet.address);
-          const formattedAddress = `${wallet.address.slice(0, 5)}...${wallet.address.slice(-4)}`;
-          const formattedBalance = balance ? `(${parseFloat(balance).toFixed(2)} ETH)` : "(0.00 ETH)";
+          const formattedAddress = `${wallet.address.slice(
+            0,
+            5
+          )}...${wallet.address.slice(-4)}`;
+          const formattedBalance = balance
+            ? `(${parseFloat(balance).toFixed(2)} ETH)`
+            : "(0.00 ETH)";
 
           return [
             {
@@ -372,7 +385,7 @@ export async function walletsCommand(ctx, wallets) {
 
       // Update the inlineKeyboard to include the wallet buttons
       inlineKeyboard = [...walletButtons, ...inlineKeyboard]; // Add wallet buttons on top of import and generate options
-
+      inlineKeyboard.push([deleteWalletBtn]);
       // Custom message when wallets are present
       htmlMessage = "<b>Here are your linked wallets:</b>\n";
     } catch (error) {
@@ -389,7 +402,6 @@ export async function walletsCommand(ctx, wallets) {
   replyWithHTMLAndInlineKeyboard(ctx, htmlMessage, inlineKeyboard);
 }
 
-
 // Delete wallet warning message
 export const deleteWalletWarningMsg =
   "⚠️ Warning ⚠️\nDeleting a wallet is irreversible.\n\nIf you do not have your private keys backed up, please transfer out all funds from your wallet.\n\nIf a wallet is deleted and you do not have your private keys, you will lose access to your funds.";
@@ -400,7 +412,7 @@ export async function btnDeleteWalletAction(ctx, wallets) {
 
   const { htmlMessage: _htmlMessage } = await walletsList(wallets);
   const htmlMessage = `Please select a wallet to delete:\n\n${_htmlMessage}\n\n${deleteWalletWarningMsg}`;
-
+  
   const walletsBtns = wallets.map((wallet) =>
     createCallBackBtn(wallet.name, `delete-wallet-${wallet.name}`)
   );

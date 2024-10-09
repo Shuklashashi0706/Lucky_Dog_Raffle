@@ -102,6 +102,8 @@ export const handleAddRaffle = async (ctx) => {
 
   if (chatId && userId) {
     try {
+      console.log("uid",userId);
+      
       const groups = await Group.find({ userId });
 
       const addBotDeepLink = Markup.button.url(

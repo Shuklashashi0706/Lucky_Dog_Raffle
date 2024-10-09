@@ -21,7 +21,6 @@ export const updateRaffleScene = new BaseScene("updateRaffleScene");
 updateRaffleScene.enter(async (ctx) => {
   ctx.session.oneUpdate = false;
   const groupId = ctx.session.createdGroup;
-  console.log("groupId", groupId);
 
   try {
     const raffle = await Raffle.findOne({
