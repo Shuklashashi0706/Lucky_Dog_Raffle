@@ -46,7 +46,7 @@ export async function endRaffle(ctx, raffleId) {
         CHAIN_ID
       ) {
         return ctx.reply(
-          "Invalid Network Selected!,\nChange Network and try again",
+          "Invalid Network Selected!,\nChange Network to Polygon Amoy and try again",
           Markup.inlineKeyboard([
             Markup.button.callback("Try Again", "metamask_add_raffle"),
           ])
@@ -149,7 +149,7 @@ export async function updateRaffle(
         CHAIN_ID
       ) {
         return ctx.reply(
-          "Invalid Network Selected!,\nChange Network and try again",
+          "Invalid Network Selected!,\nChange Network to Polygon Amoy and try again",
           Markup.inlineKeyboard([
             Markup.button.callback("Try Again", "metamask_add_raffle"),
           ])
@@ -346,10 +346,20 @@ Max Buy Per Wallet   : ${maxBuyPerWallet}
 contract.on("MaxTicketsSold", async (raffleId, numberOfTickets) => {
   try {
     const raffle = await Raffle.findOne({ raffleId });
-    console.log(raffle);
+
     if (raffle) {
       const userId = raffle.userId;
-      const message = `Max Tickets(${numberOfTickets}) sold out for raffle id ${raffleId}, Please end it now`;
+      const message = `Max tickets has been sold for the raffle with raffle id, you can end it now\n
+-----------------------------------------
+Raffle ID            : ${raffle.raffleId}
+Admin                : ${raffle.admin}
+TG Owner             : ${raffle.tgOwner}
+Entry Cost           : ${ethers.utils.formatEther(raffle.entryCost)} Ether
+Raffle Start Time    : ${new Date(raffle.raffleStartTime * 1000).toUTCString()}
+TG Owner Percentage  : ${(raffle.tgOwnerPercentage / 100).toFixed(2)}% 
+Max Buy Per Wallet   : ${raffle.maxBuyPerWallet}
+Referrer             : ${raffle.referrer}
+-----------------------------------------`;
       sendGroupMessage(userId, message);
     } else {
       console.log(`Raffle with ID ${raffleId} not found in the database.`);

@@ -5,9 +5,30 @@ import { formatTime } from "./fortmat-date";
 import { getWalletBalance } from "./contract-functions";
 import GlobalMetrics from "../models/global-metrics";
 import { Markup } from "telegraf";
+import { User } from "../models/users";
 
 const ZERO_WALLET_ADDRESS = "0x0000000000000000000000000000000000000000";
 const CHAIN_ID = "0x13882";
+
+export async function checkAndAddUser(username, userId) {
+  try {
+    const existingUser = await User.findOne({ userId: userId });
+
+    if (existingUser) {
+      return 1;
+    }
+    const newUser = new User({
+      username: username,
+      userId: userId,
+    });
+
+    await newUser.save();
+    return 0;
+  } catch (error) {
+    throw error;
+  }
+}
+
 export const createRaffle = async (ctx, privateKey) => {
   const provider = new ethers.providers.JsonRpcProvider(
     CHAIN["sepolia"].rpcUrl
@@ -17,7 +38,7 @@ export const createRaffle = async (ctx, privateKey) => {
   if (ctx.session.mmstate === "add_raffle") {
     if (privateKey.provider.provider.chainId !== CHAIN_ID) {
       return ctx.reply(
-        "Invalid Network Selected!,\nChange Network and try again",
+        "Invalid Network Selected!,\nChange Network to Polygon Amoy and try again",
         Markup.inlineKeyboard([
           Markup.button.callback("Try Again", "metamask_add_raffle"),
         ])
@@ -147,11 +168,17 @@ Good luck to all participants! 🍀
         try {
           const newRaffle = new Raffle(raffleDetails);
           await newRaffle.save();
-          await GlobalMetrics.updateOne(
-            {},
-            { $inc: { totalRegisteredUsers: 1 } },
-            { upsert: true }
+          const userExists = await checkAndAddUser(
+            ctx.from.username || ctx.from.first_name,
+            ctx.from.id
           );
+          if (!userExists) {
+            await GlobalMetrics.updateOne(
+              {},
+              { $inc: { totalRegisteredUsers: 1 } },
+              { upsert: true }
+            );
+          }
           console.log("Raffle saved successfully");
 
           const message = await getRaffleDetailsMessage(raffleId);

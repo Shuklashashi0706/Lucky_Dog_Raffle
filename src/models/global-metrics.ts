@@ -1,10 +1,6 @@
 import mongoose from "mongoose";
 const globalMetricsSchema = new mongoose.Schema(
   {
-    userId: {
-      type: Number,
-      default: 0,
-    },
     totalTicketsPurchased: {
       type: Number,
       default: 0,
