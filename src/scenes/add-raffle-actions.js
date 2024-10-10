@@ -17,6 +17,8 @@ import { createRaffle } from "../utils/createRaffle";
 import { decrypt } from "../utils/encryption-utils";
 import { getWalletBalance } from "../utils/contract-functions";
 import { commandValidation, isCommand } from "../utils/message-utils";
+import { parse } from "path";
+import { start } from "repl";
 export const raffleScene = new BaseScene("raffleScene");
 let previousMessage;
 
@@ -307,7 +309,6 @@ raffleLimitScene.on("text", (ctx) => {
   try {
     if (isCommand(ctx)) return;
     const input = ctx.message.text;
-
     if (ctx.session.raffleLimitType === "time_based") {
       const validation = startTimeSchema.safeParse(input);
       if (!validation.success) {
@@ -319,6 +320,7 @@ raffleLimitScene.on("text", (ctx) => {
           ? parseTime("0d 0h")
           : parseTime(ctx.session.startTime);
       const raffleLimit = parseTime(input);
+
       if (raffleLimit <= startTime) {
         return ctx.reply(
           "Raffle limit time must be greater than the start time. Please enter a valid time."

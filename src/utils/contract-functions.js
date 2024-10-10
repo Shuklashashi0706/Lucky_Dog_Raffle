@@ -342,3 +342,21 @@ Max Buy Per Wallet   : ${maxBuyPerWallet}
   }
   // }
 );
+
+contract.on("MaxTicketsSold", async (raffleId, numberOfTickets) => {
+  try {
+    const raffle = await Raffle.findOne({ raffleId });
+    console.log(raffle);
+    if (raffle) {
+      const userId = raffle.userId;
+      const message = `Max Tickets(${numberOfTickets}) sold out for raffle id ${raffleId}, Please end it now`;
+      sendGroupMessage(userId, message);
+    } else {
+      console.log(`Raffle with ID ${raffleId} not found in the database.`);
+    }
+  } catch (error) {
+    console.error(
+      `Error updating revenue distribution or raffle: ${error.message}`
+    );
+  }
+});

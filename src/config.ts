@@ -53,6 +53,25 @@ export const RAFFLE_ABI: any[] = [
     inputs: [
       {
         indexed: true,
+        internalType: "uint256",
+        name: "raffleId",
+        type: "uint256",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "numTickets",
+        type: "uint256",
+      },
+    ],
+    name: "MaxTicketsSold",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
         internalType: "address",
         name: "previousOwner",
         type: "address",
@@ -462,4 +481,4 @@ export const RAFFLE_ABI: any[] = [
 ];
 // Define the contract address
 export const RAFFLE_CONTRACT: string =
-  "0x8A8b5fc7B8E931Ff5362b4f585F371a9224A49E1";
+  "0x73625f8d9FA2Ece4896b52De7dA74955027386b7";
