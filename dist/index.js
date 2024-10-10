@@ -45,6 +45,7 @@ const active_raffles_1 = require("./controllers/active-raffles");
 const completed_raffles_1 = require("./controllers/completed_raffles");
 const revenuedistribution_1 = require("./controllers/revenuedistribution");
 const raffle_pool_1 = require("./controllers/raffle-pool");
+const cron_1 = require("./cron");
 dotenv_1.default.config();
 if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Setup your token");
@@ -524,6 +525,7 @@ bot.hears(["start", "/cancel", "/wallets"], () => {
     console.log("hears");
 });
 (0, connect_db_1.default)();
+(0, cron_1.startRaffleCron)();
 if (process.env.NODE_ENV === "development") {
     bot.launch(() => {
         console.log("Bot is running in dev mode");

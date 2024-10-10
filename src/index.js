@@ -47,6 +47,7 @@ import { handleActiveRaffles } from "./controllers/active-raffles";
 import { handleCompletedRaffles } from "./controllers/completed_raffles";
 import { handleRevenueDistribution } from "./controllers/revenuedistribution";
 import { handleRafflePool } from "./controllers/raffle-pool";
+import { startRaffleCron } from "./cron";
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -638,6 +639,7 @@ bot.hears(["start", "/cancel", "/wallets"], () => {
 });
 
 connectDB();
+startRaffleCron();
 
 if (process.env.NODE_ENV === "development") {
   bot.launch(() => {
