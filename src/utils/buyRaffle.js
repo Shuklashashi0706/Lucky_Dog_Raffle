@@ -8,6 +8,7 @@ import { decrypt } from "./encryption-utils";
 import GlobalMetrics from "../models/global-metrics";
 import { getWalletBalance } from "./contract-functions.js";
 import Raffle from "../models/raffle";
+import { User } from "../models/users.js";
 export const raffleDetail = new Map();
 
 export const handleBuyRaffle = async (ctx) => {
@@ -163,7 +164,7 @@ buyRaffleContractCallScene.enter(async (ctx) => {
       CHAIN_ID
     ) {
       return ctx.reply(
-        "Invalid Network Selected!,\nChange Network and try again",
+        "Invalid Network Selected!,\nChange Network to Polygon Amoy and try again",
         Markup.inlineKeyboard([
           Markup.button.callback("Try Again", "metamask_buy_ticket"),
         ])
@@ -185,7 +186,7 @@ buyRaffleContractCallScene.enter(async (ctx) => {
   if (isSuccessful) {
     await GlobalMetrics.updateOne(
       {},
-      { $inc: { totalRafflesCreated: numOfTickets } },
+      { $inc: { totalTicketsPurchased: numOfTickets } },
       { upsert: true }
     );
 
