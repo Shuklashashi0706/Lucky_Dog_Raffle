@@ -317,9 +317,8 @@ raffleLimitScene.on("text", (ctx) => {
 
       const startTime =
         ctx.session.startTime === "now"
-          ? new Date.now()
+          ? parseTime("0d 0h")
           : parseTime(ctx.session.startTime);
-      console.log(startTime);
       const raffleLimit = parseTime(input);
 
       if (raffleLimit <= startTime) {
