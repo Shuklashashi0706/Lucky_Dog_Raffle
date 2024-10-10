@@ -20,12 +20,13 @@ import { commandValidation, isCommand } from "../utils/message-utils";
 export const raffleScene = new BaseScene("raffleScene");
 let previousMessage;
 
-
 function parseTime(timeString) {
   const timeMatch = timeString.match(/^(\d+d\s)?(\d+(\.\d+)?)h$/);
-  const days = timeMatch[1] ? parseInt(timeMatch[1].replace("d", "").trim(), 10) : 0;
+  const days = timeMatch[1]
+    ? parseInt(timeMatch[1].replace("d", "").trim(), 10)
+    : 0;
   const hours = parseFloat(timeMatch[2]);
-  return days * 24 + hours;  // Convert total time to hours for comparison
+  return days * 24 + hours; // Convert total time to hours for comparison
 }
 
 export const handleCreateRaffleWithoutReferral = async (ctx, walletAddress) => {
@@ -110,7 +111,6 @@ export const handleAddRaffle = async (ctx) => {
 
   if (chatId && userId) {
     try {
-      
       const groups = await Group.find({ userId });
 
       const addBotDeepLink = Markup.button.url(
@@ -272,7 +272,9 @@ startTimeScene.on("text", (ctx) => {
     ctx.scene.enter("raffleLimitScene");
   } catch (error) {
     console.error("Error during text processing:", error);
-    ctx.reply("An error occurred while processing the start time. Please make sure the format is correct and try again.");
+    ctx.reply(
+      "An error occurred while processing the start time. Please make sure the format is correct and try again."
+    );
   }
 });
 
@@ -312,12 +314,16 @@ raffleLimitScene.on("text", (ctx) => {
         return ctx.reply(validation.error.errors[0].message);
       }
 
-      const startTime = parseTime(ctx.session.startTime);
+      const startTime =
+        ctx.session.startTime === "now"
+          ? parseTime("0d 0h")
+          : parseTime(ctx.session.startTime);
       const raffleLimit = parseTime(input);
       if (raffleLimit <= startTime) {
-        return ctx.reply("Raffle limit time must be greater than the start time. Please enter a valid time.");
+        return ctx.reply(
+          "Raffle limit time must be greater than the start time. Please enter a valid time."
+        );
       }
-
     } else if (ctx.session.raffleLimitType === "value_based") {
       const validation = raffleLimitSchema.safeParse(input);
       if (!validation.success) {
@@ -329,10 +335,11 @@ raffleLimitScene.on("text", (ctx) => {
     ctx.scene.enter("maxTicketsSingleUserCanBuy");
   } catch (error) {
     console.error("Error during raffle limit processing:", error);
-    ctx.reply("An error occurred while processing the raffle limit. Please try again.");
+    ctx.reply(
+      "An error occurred while processing the raffle limit. Please try again."
+    );
   }
 });
-
 
 const maxTicketsSingleUserCanBuy = new BaseScene("maxTicketsSingleUserCanBuy");
 maxTicketsSingleUserCanBuy.enter((ctx) => {
