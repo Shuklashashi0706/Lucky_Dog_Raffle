@@ -47,39 +47,45 @@ export const generateMMSigner = async (ctx) => {
 
     let connected = false;
     let from;
+    let timeoutId;
 
-    while (!connected && userSessions.has(userId)) {
-      await delay(5000);
-      try {
-        const accounts = await accountsPromise;
-        from = accounts[0];
-        if (from !== undefined) {
-          connected = true;
-          await ctx.reply(`Wallet connected: ${from}`);
+    const timeoutPromise = new Promise((resolve) => {
+      timeoutId = setTimeout(async () => {
+        await ctx.reply("Wallet connection timed out. Please try again.");
+        resolve(null);
+      }, 80000);
+    });
 
-          if (!checkForConnectedNetwork()) {
-           
-          }
-        }
-      } catch (error) {
-        console.error("Error connecting:", error);
-        await ctx.reply("Error connecting! Please try again.");
-      }
+    const result = await Promise.race([accountsPromise, timeoutPromise]);
+    
+    if (result) {
+      clearTimeout(timeoutId);
+    }
+
+    if (Array.isArray(result)) {
+      from = result[0];
+    }
+
+    if (from) {
+      connected = true;
+      await ctx.reply(`Wallet connected: ${from}`);
     }
 
     ctx.session.currentWallet = from;
 
-    if (from && userSessions.has(userId)) {
+    if (connected && userSessions.has(userId)) {
       const wallet = new ethers.providers.Web3Provider(ethereum).getSigner(
         from
       );
       return wallet;
-    } else if (userSessions.has(userId)) {
-      await ctx.reply("No account connected. Cannot create raffle.");
     }
   } catch (error) {
-    console.error("An error occurred:", error);
-    await ctx.reply("An error occurred. Please try again later.");
+    if (error.message.includes("timed out")) {
+      // await ctx.reply("Wallet connection timed out. Please try again.");
+    } else {
+      console.error("An error occurred:", error);
+      await ctx.reply("An error occurred. Please try again later.");
+    }
   } finally {
     userSessions.delete(userId);
   }
@@ -97,6 +103,7 @@ export const cancelSession = async (ctx) => {
 
 export const handleMMTransactions = async (ctx) => {
   const wallet = await generateMMSigner(ctx);
+  if (!wallet) return;
   switch (ctx.session.mmstate) {
     case "add_raffle":
       await createRaffle(ctx, wallet);
