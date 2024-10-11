@@ -6,6 +6,7 @@ import { getWalletBalance } from "./contract-functions";
 import GlobalMetrics from "../models/global-metrics";
 import { Markup } from "telegraf";
 import { User } from "../models/users";
+import { sendGroupMessage } from "./sendGroupMessage";
 
 const ZERO_WALLET_ADDRESS = "0x0000000000000000000000000000000000000000";
 const CHAIN_ID = "0x13882";
@@ -144,51 +145,14 @@ Good luck to all participants! 🍀
       return `Error: Unable to fetch raffle details. Please try again later.`;
     }
   }
-  contract.on(
-    "RaffleCreated",
-    async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
-      if (admin.toLowerCase() === ctx.session.currentWallet.toLowerCase()) {
-        const raffleDetails = {
-          raffleId: raffleId.toNumber(),
-          raffleTitle: ctx.session.raffleTitle,
-          groupId: groupId,
-          groupName: groupName,
-          userId: ctx.from.id,
-          botId: 10, //temporary
-          entryCost: ethers.utils.formatEther(entryCost),
-          raffleStartTime: _raffleStartTime,
-          raffleEndTime: raffleEndTime.toNumber(),
-          maxTickets: maxTickets.toNumber(),
-          tgOwner: _tgOwner,
-          tgOwnerPercentage: _tgOwnerPercentage,
-          maxBuyPerWallet: _maxBuyPerWallet,
-          referrer: _referrer,
-          isActive: true,
-        };
-        try {
-          const newRaffle = new Raffle(raffleDetails);
-          await newRaffle.save();
-          const userExists = await checkAndAddUser(
-            ctx.from.username || ctx.from.first_name,
-            ctx.from.id
-          );
-          if (!userExists) {
-            await GlobalMetrics.updateOne(
-              {},
-              { $inc: { totalRegisteredUsers: 1 } },
-              { upsert: true }
-            );
-          }
-          console.log("Raffle saved successfully");
+  // contract.on(
+  //   "RaffleCreated",
+  //   async (raffleId, admin, entryCost, raffleEndTime, maxTickets) => {
+  //     if (admin.toLowerCase() === ctx.session.currentWallet.toLowerCase()) {
 
-          const message = await getRaffleDetailsMessage(raffleId);
-          await ctx.telegram.sendMessage(groupId, message);
-        } catch (dbError) {
-          console.error("Error saving raffle to database:", dbError);
-        }
-      }
-    }
-  );
+  //     }
+  //   }
+  // );
   try {
     await ctx.reply("Your transaction is being processed, please wait...");
     let walletBalance;
@@ -240,6 +204,50 @@ Good luck to all participants! 🍀
     await ctx.reply(`Transaction mined: ${receipt.transactionHash}`);
     await ctx.reply("Raffle is created successfully ✨");
     ctx.session.mmstate = null;
+
+    const event = receipt.events.find((e) => e.event === "RaffleCreated");
+    if (event) {
+      const { raffleId, admin, entryCost, raffleEndTime, maxTickets } =
+        event.args;
+
+      const raffleDetails = {
+        raffleId: raffleId.toNumber(),
+        raffleTitle: ctx.session.raffleTitle,
+        groupId: groupId,
+        groupName: groupName,
+        userId: ctx.from.id,
+        botId: 10, //temporary
+        entryCost: ethers.utils.formatEther(entryCost),
+        raffleStartTime: _raffleStartTime,
+        raffleEndTime: raffleEndTime.toNumber(),
+        maxTickets: maxTickets.toNumber(),
+        tgOwner: _tgOwner,
+        tgOwnerPercentage: _tgOwnerPercentage,
+        maxBuyPerWallet: _maxBuyPerWallet,
+        referrer: _referrer,
+        isActive: true,
+      };
+      try {
+        const newRaffle = new Raffle(raffleDetails);
+        await newRaffle.save();
+        const userExists = await checkAndAddUser(
+          ctx.from.username || ctx.from.first_name,
+          ctx.from.id
+        );
+        if (!userExists) {
+          await GlobalMetrics.updateOne(
+            {},
+            { $inc: { totalRegisteredUsers: 1 } },
+            { upsert: true }
+          );
+        }
+        console.log("Raffle saved successfully");
+                const message = await getRaffleDetailsMessage(raffleId);
+        sendGroupMessage(groupId, message);
+      } catch (dbError) {
+        console.error("Error saving raffle to database:", dbError);
+      }
+    }
   } catch (error) {
     console.error("Error creating raffle:", error);
     if (error.reason) {
