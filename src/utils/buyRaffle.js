@@ -8,7 +8,7 @@ import { decrypt } from "./encryption-utils";
 import GlobalMetrics from "../models/global-metrics";
 import { getWalletBalance } from "./contract-functions.js";
 import Raffle from "../models/raffle";
-import { User } from "../models/users.js";
+import { User } from "../models/users";
 export const raffleDetail = new Map();
 
 export const handleBuyRaffle = async (ctx) => {

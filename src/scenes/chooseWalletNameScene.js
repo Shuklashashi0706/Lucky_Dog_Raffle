@@ -9,25 +9,24 @@ export const chooseWalletNameStep = new Scenes.BaseScene(chooseWalletNameScene);
 chooseWalletNameStep.enter(
   async (ctx) =>
     await ctx.reply(
-      "Choose a name for the newly generated wallet. (Max 8 characters)"
+      "Choose a name for the newly generated wallet. (Max 16 characters)"
     )
 );
 
 chooseWalletNameStep.on("text", async (ctx) => {
   const walletName = ctx.message.text;
 
-  if (walletName.length > 8) {
-    await ctx.reply("Wallet name must be less than or equal to 8 characters");
+  if (walletName.length > 16) {
+    await ctx.reply("Wallet name must be less than or equal to 16 characters");
   } else {
-  
-
-     if (ctx.session.wallets && ctx.session.wallets.length === 6) {
+    if (ctx.session.wallets && ctx.session.wallets.length === 6) {
       await ctx.reply("Wallet limit reached");
     } else {
       await ctx.deleteMessage(); // Ensure message deletion
 
       // Assign the name to the new wallet
       const newWallet = ctx.session.newWallet;
+      
       newWallet.name = walletName;
       ctx.session.wallets = [...(ctx.session.wallets ?? []), newWallet];
 
@@ -58,7 +57,7 @@ chooseWalletNameStep.on("text", async (ctx) => {
         await ctx.scene.leave();
       }
     }
+    delete ctx.session.newWallet;
   }
 
-  delete ctx.session.newWallet;
 });
