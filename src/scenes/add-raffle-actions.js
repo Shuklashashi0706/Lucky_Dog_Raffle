@@ -162,6 +162,57 @@ raffleScene.on("text", (ctx) => {
   ctx.scene.enter("ticketPriceScene");
 });
 
+export const handleConfigGroupSelectionScene = new BaseScene(
+  "handleConfigGroupSelectionScene"
+);
+
+handleConfigGroupSelectionScene.enter(async (ctx) => {
+  const groupId = ctx.session.configGroupId; // Get the stored groupId from the session
+  
+  if (groupId) {
+    try {
+      const selectedGroup = await Group.findOne({ groupId });
+
+      if (!selectedGroup) {
+        await ctx.reply("Failed to find the selected group. Please try again.");
+        return;
+      }
+
+      ctx.session.createdGroup = groupId;
+      const chat = await ctx.telegram.getChat(groupId);
+      ctx.session.createdGroupName = chat.title;
+      await ctx.reply(
+        `You selected ${selectedGroup.groupUsername} for create/update raffle`
+      );
+      await ctx.reply(
+        `What are you wanting to do for ${selectedGroup.groupUsername} group/channel today:`,
+        Markup.inlineKeyboard([
+          [Markup.button.callback("Add a new Raffle", `ADD_RAFFLE_${groupId}`)],
+          [
+            Markup.button.callback(
+              "Update running raffle",
+              `UPDATE_RAFFLE_${groupId}`
+            ),
+          ],
+          [
+            Markup.button.callback(
+              "View raffle details",
+              `VIEW_RAFFLE_${groupId}`
+            ),
+          ],
+        ])
+      );
+    } catch (error) {
+      console.error("Error fetching selected group:", error);
+      ctx.reply(
+        "An error occurred while fetching the group. Please try again."
+      );
+    }
+  } else {
+    await ctx.reply("Failed to process group selection. Please try again.");
+  }
+});
+
 const ticketPriceScene = new BaseScene("ticketPriceScene");
 ticketPriceScene.enter((ctx) => {
   ctx.reply("Enter ticket price(ETH):");
@@ -598,4 +649,5 @@ export const addRaffleScenes = [
   maxTicketsSingleUserCanBuy,
   askSplitWalletScene,
   handleCreateRaffleWithReferral,
+  handleConfigGroupSelectionScene,
 ];

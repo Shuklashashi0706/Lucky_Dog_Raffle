@@ -5,31 +5,16 @@ const { ethers } = require("ethers");
 import EventEmitter from "events";
 import { CHAIN, RAFFLE_ABI, RAFFLE_CONTRACT } from "../config";
 import { EventEmitter } from "stream";
+import { deletePreviousMessage,previousMessages } from "../utils/message-utils";
 
-// for using raffleDetail buyRaffle
 export const raffleDetailStore = new Map();
 
-// Store previous messages per userId
-const previousMessages = new Map();
+
 
 class BotEventEmitter extends EventEmitter {}
 export const botEventEmitter = new BotEventEmitter();
 
-// Function to delete previous message for a specific user
-async function deletePreviousMessage(ctx, userId) {
-  const previousMessage = previousMessages.get(userId);
-  if (previousMessage && previousMessage.message_id) {
-    try {
-      await ctx.deleteMessage(previousMessage.message_id);
-      previousMessages.delete(userId); // Remove entry after deletion
-    } catch (error) {
-      console.error(
-        `Failed to delete previous message for userId: ${userId}`,
-        error.message
-      );
-    }
-  }
-}
+
 
 export const escapeMarkdown = (text) => {
   return text.replace(/([_*[\]()])/g, " ");
@@ -49,12 +34,11 @@ buyRaffleScene.enter(async (ctx) => {
   // Delete previous message for this user
   await deletePreviousMessage(ctx, userId);
 
-  // Send a new message and store its reference
-  const currentMessage = await ctx.reply("🔍 Fetching raffle details...");
-  previousMessages.set(userId, currentMessage); // Store the current message for this user
-
   if (ctx.chat.type === "supergroup" || ctx.chat.type === "group") {
     try {
+      // Send a new message and store its reference
+      const currentMessage = await ctx.reply("🔍 Fetching raffle details...");
+      previousMessages.set(userId, currentMessage); // Store the current message for this user  
       const raffle = await Raffle.findOne({ groupId, isActive: true });
       if (!raffle) {
         await deletePreviousMessage(ctx, userId); // Delete if there's no active raffle
@@ -132,9 +116,10 @@ buyRaffleScene.enter(async (ctx) => {
     );
   }
 });
-
+let count = 0;
 // Action handler for "Purchase Tickets" button
 buyRaffleScene.action(/^purchase_tickets_(\d+)$/, async (ctx) => {
+  
   const userId = ctx.from.id; // Extract the user ID from ctx.from (not callback)
   const groupName = ctx.session.groupName || "Group"; // Get the group name from the session
   const raffleTitle = ctx.session.raffleTitle || "Raffle"; // Get the raffle title from the session

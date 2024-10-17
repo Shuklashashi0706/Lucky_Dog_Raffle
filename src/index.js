@@ -18,6 +18,7 @@ import {
 import { buyRaffleScenes, escapeMarkdown } from "./scenes/buy-raffle-scene";
 import { buyRafflePaymentScenes } from "./utils/buyRaffle";
 import { botEventEmitter } from "./scenes/buy-raffle-scene";
+import { configBotEventEmitter } from "./scenes/config-group";
 import { getRaffleDetails } from "./utils/contract-functions";
 import {
   handleReferralCode,
@@ -26,6 +27,7 @@ import {
   handleSelectWallet,
   handleWalletSelection,
 } from "./scenes/referal-code";
+import { configGroupScene } from "./scenes/config-group";
 import { walletReferralScene } from "./scenes/referal-code";
 import { importWalletScene } from "./scenes/importWalletScene";
 import { generateWalletSeedScene } from "./scenes/generateWalletSeedScene";
@@ -48,6 +50,7 @@ import { handleCompletedRaffles } from "./controllers/completed_raffles";
 import { handleRevenueDistribution } from "./controllers/revenuedistribution";
 import { handleRafflePool } from "./controllers/raffle-pool";
 import { startRaffleCron } from "./cron";
+
 dotenv.config();
 
 if (!process.env.TELEGRAM_BOT_TOKEN) {
@@ -71,6 +74,7 @@ const stage = new Scenes.Stage([
   ...buyRafflePaymentScenes,
   myRaffle,
   walletReferralScene,
+  configGroupScene,
 ]);
 
 bot.use(session());
@@ -585,6 +589,31 @@ bot.action(/buy_raffle_wallet_(.+)/, async (ctx) => {
 });
 
 // ---------------------------- buy raffle end------------------------------
+
+//----------------config group start -----------------------
+bot.command("config", async (ctx) => {
+  ctx.scene.enter("configGroupScene");
+});
+
+configBotEventEmitter.on("configMessageDmSent", async ({ userId, ctx, groupId }) => {
+  await bot.handleUpdate({
+    ...ctx.update,
+    message: {
+      text: `sendConfigmessageinprivatedm_${groupId}`, 
+      chat: { id: userId },
+      from: { id: userId },
+    },
+  });
+});
+
+bot.action(/^sendConfigmessageinprivatedm_(.+)/, async (ctx) => {
+  const groupId = ctx.match[1]; 
+  ctx.session.configGroupId = groupId;
+  await ctx.scene.enter("handleConfigGroupSelectionScene");
+});
+
+
+//----------------config group end -----------------------
 
 //--------------------my raffle start -------------------------
 bot.command("my_raffles", async (ctx) => {
