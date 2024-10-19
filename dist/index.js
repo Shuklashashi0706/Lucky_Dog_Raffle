@@ -25,8 +25,10 @@ const add_raffle_actions_1 = require("./scenes/add-raffle-actions");
 const buy_raffle_scene_1 = require("./scenes/buy-raffle-scene");
 const buyRaffle_1 = require("./utils/buyRaffle");
 const buy_raffle_scene_2 = require("./scenes/buy-raffle-scene");
+const config_group_1 = require("./scenes/config-group");
 const contract_functions_1 = require("./utils/contract-functions");
 const referal_code_1 = require("./scenes/referal-code");
+const config_group_2 = require("./scenes/config-group");
 const referal_code_2 = require("./scenes/referal-code");
 const importWalletScene_1 = require("./scenes/importWalletScene");
 const generateWalletSeedScene_1 = require("./scenes/generateWalletSeedScene");
@@ -68,6 +70,7 @@ const stage = new telegraf_1.Scenes.Stage([
     ...buyRaffle_1.buyRafflePaymentScenes,
     my_raffle_scene_1.myRaffle,
     referal_code_2.walletReferralScene,
+    config_group_2.configGroupScene,
 ]);
 bot.use((0, telegraf_1.session)());
 bot.use(stage.middleware());
@@ -480,6 +483,23 @@ bot.action(/buy_raffle_wallet_(.+)/, (ctx) => __awaiter(void 0, void 0, void 0, 
     }
 }));
 // ---------------------------- buy raffle end------------------------------
+//----------------config group start -----------------------
+bot.command("config", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    ctx.scene.enter("configGroupScene");
+}));
+config_group_1.configBotEventEmitter.on("configMessageDmSent", (_a) => __awaiter(void 0, [_a], void 0, function* ({ userId, ctx, groupId }) {
+    yield bot.handleUpdate(Object.assign(Object.assign({}, ctx.update), { message: {
+            text: `sendConfigmessageinprivatedm_${groupId}`,
+            chat: { id: userId },
+            from: { id: userId },
+        } }));
+}));
+bot.action(/^sendConfigmessageinprivatedm_(.+)/, (ctx) => __awaiter(void 0, void 0, void 0, function* () {
+    const groupId = ctx.match[1];
+    ctx.session.configGroupId = groupId;
+    yield ctx.scene.enter("handleConfigGroupSelectionScene");
+}));
+//----------------config group end -----------------------
 //--------------------my raffle start -------------------------
 bot.command("my_raffles", (ctx) => __awaiter(void 0, void 0, void 0, function* () {
     yield ctx.scene.enter("myRaffle");

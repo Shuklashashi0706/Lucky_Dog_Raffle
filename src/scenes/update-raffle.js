@@ -27,7 +27,7 @@ updateRaffleScene.enter(async (ctx) => {
       groupId: groupId,
       isActive: true,
     }).select("raffleId");
-    
+
     if (!raffle) {
       ctx.reply(
         "No raffle running in this group, start by creating one.",
@@ -97,25 +97,50 @@ Tickets Sold         : ${raffleDetails.ticketsSold}
       } else {
         ctx.session.timeBasedRaffle = false;
       }
-      if (!ownerWalletFlag) {
-        ctx.session.redirectToUpdateRaffle = true;
-        ctx.reply(
-          `We could not find the owner wallet ${raffleDetails.admin.slice(
-            0,
-            4
-          )}....${raffleDetails.admin.slice(-4)} in this session.`,
-          Markup.inlineKeyboard([
-            [Markup.button.callback("Import wallet", `import-existing-wallet`)],
-            [
-              Markup.button.callback(
-                "Metamask (BETA)",
-                `metamask_update_owner_check`
-              ),
-            ],
-          ])
-        );
+      const endTime = new Date(
+        raffleDetails.raffleEndTime * 1000
+      ).toUTCString();
+      const currentTime = new Date();
+      let raffleEnded;
+      if (raffleDetails.raffleEndTime.toNumber() !== 0) {
+        raffleEnded = currentTime < endTime;
       } else {
-        ctx.scene.enter("timeBasedRaffle");
+        raffleEnded = raffleDetails.ticketsSold.eq(raffleDetails.maxTickets);
+      }
+      const userId = ctx.from.id;
+      const member = await ctx.telegram.getChatMember(groupId, userId);
+      if (!raffleEnded) {
+        if (!ownerWalletFlag) {
+          ctx.session.redirectToUpdateRaffle = true;
+          ctx.reply(
+            `We could not find the owner wallet ${raffleDetails.admin.slice(
+              0,
+              4
+            )}....${raffleDetails.admin.slice(-4)} in this session.`,
+            Markup.inlineKeyboard([
+              [
+                Markup.button.callback(
+                  "Import wallet",
+                  `import-existing-wallet`
+                ),
+              ],
+              [
+                Markup.button.callback(
+                  "Metamask (BETA)",
+                  `metamask_update_owner_check`
+                ),
+              ],
+            ])
+          );
+        } else {
+          ctx.scene.enter("timeBasedRaffle");
+        }
+      } else {
+        if (member.status === "administrator" || member.status === "creator") {
+          ctx.scene.enter("timeBasedRaffle");
+        } else {
+          ctx.reply("Not an admin of the group!");
+        }
       }
     }
   } catch (err) {
