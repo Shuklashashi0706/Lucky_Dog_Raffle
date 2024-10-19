@@ -595,23 +595,25 @@ bot.command("config", async (ctx) => {
   ctx.scene.enter("configGroupScene");
 });
 
-configBotEventEmitter.on("configMessageDmSent", async ({ userId, ctx, groupId }) => {
-  await bot.handleUpdate({
-    ...ctx.update,
-    message: {
-      text: `sendConfigmessageinprivatedm_${groupId}`, 
-      chat: { id: userId },
-      from: { id: userId },
-    },
-  });
-});
+configBotEventEmitter.on(
+  "configMessageDmSent",
+  async ({ userId, ctx, groupId }) => {
+    await bot.handleUpdate({
+      ...ctx.update,
+      message: {
+        text: `sendConfigmessageinprivatedm_${groupId}`,
+        chat: { id: userId },
+        from: { id: userId },
+      },
+    });
+  }
+);
 
 bot.action(/^sendConfigmessageinprivatedm_(.+)/, async (ctx) => {
-  const groupId = ctx.match[1]; 
+  const groupId = ctx.match[1];
   ctx.session.configGroupId = groupId;
   await ctx.scene.enter("handleConfigGroupSelectionScene");
 });
-
 
 //----------------config group end -----------------------
 
