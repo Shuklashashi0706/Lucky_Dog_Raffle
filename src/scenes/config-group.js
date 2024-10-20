@@ -67,14 +67,20 @@ configGroupScene.enter(async (ctx) => {
   }
 });
 
-// Action handler for the 'Continue' button
 configGroupScene.action("continue_config", async (ctx) => {
   try {
     const userId = ctx.from.id;
-    const groupId = ctx.session.groupId; // Get the stored groupId from the session
+    const groupId = ctx.session.groupId;
     await deletePreviousMessage(ctx, userId);
-    // Emit event and pass the groupId
-    configBotEventEmitter.emit("configMessageDmSent", { userId, ctx, groupId });
+    const chatAdmins = await ctx.telegram.getChatAdministrators(ctx.chat.id);
+    const isAdmin = chatAdmins.some((admin) => admin.user.id === ctx.from.id);
+    if (isAdmin) {
+      configBotEventEmitter.emit("configMessageDmSent", {
+        userId,
+        ctx,
+        groupId,
+      });
+    }
   } catch (error) {
     console.error(
       "An error occurred while processing the 'Continue' button:",
