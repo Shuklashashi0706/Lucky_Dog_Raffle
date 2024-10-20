@@ -55,6 +55,7 @@ configGroupScene.enter(async (ctx) => {
         }
       );
       previousMessages.set(userId, mess);
+      setTimeout(() => deletePreviousMessage(ctx, userId), 90000);
     } else {
       await ctx.reply("You are not an admin of this group.");
     }
