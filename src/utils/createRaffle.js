@@ -242,7 +242,7 @@ Good luck to all participants! 🍀
           );
         }
         console.log("Raffle saved successfully");
-                const message = await getRaffleDetailsMessage(raffleId);
+        const message = await getRaffleDetailsMessage(raffleId);
         sendGroupMessage(groupId, message);
       } catch (dbError) {
         console.error("Error saving raffle to database:", dbError);
@@ -251,7 +251,7 @@ Good luck to all participants! 🍀
   } catch (error) {
     console.error("Error creating raffle:", error);
     if (error.reason) {
-      ctx.reply(`Failed to create raffle: ${error.reason}`);
+      console.error(`Failed to create raffle: ${error.reason}`);
     } else {
       ctx.reply(
         "Failed to create raffle. Please check input parameters and try again."
